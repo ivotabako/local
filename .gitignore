@@ -7,3 +7,22 @@ artifacts/
 
 # VS Code local state
 .vscode/settings.local.json
+
+# .NET build outputs
+**/bin/
+**/obj/
+**/out/
+**/TestResults/
+**/coverage/
+
+# NuGet / package caches
+**/.nuget/
+**/packages/
+
+# User secrets and local config
+**/appsettings.Local.json
+**/secrets.json
+
+# OS / editor noise
+**/.DS_Store
+**/Thumbs.db

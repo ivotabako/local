@@ -1,0 +1,61 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET: LocalEnterprise.Api (http)",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/src/Backend/LocalEnterprise.Api/LocalEnterprise.Api.csproj",
+      "launchBrowser": {
+        "enabled": true,
+        "args": "${auto-detect-url}",
+        "windows": {
+          "command": "cmd.exe"
+        }
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "cwd": "${workspaceFolder}/src/Backend/LocalEnterprise.Api"
+    },
+    {
+      "name": ".NET: LocalEnterprise.Api (https)",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/src/Backend/LocalEnterprise.Api/LocalEnterprise.Api.csproj",
+      "launchBrowser": {
+        "enabled": true,
+        "args": "${auto-detect-url}",
+        "windows": {
+          "command": "cmd.exe"
+        }
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "https://localhost:7243;http://localhost:5218"
+      },
+      "cwd": "${workspaceFolder}/src/Backend/LocalEnterprise.Api"
+    },
+    {
+      "name": ".NET: LocalEnterprise.Tests.Unit",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/src/Backend/LocalEnterprise.Tests.Unit/LocalEnterprise.Tests.Unit.csproj"
+    },
+    {
+      "name": ".NET: LocalEnterprise.Tests.Integration",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/src/Backend/LocalEnterprise.Tests.Integration/LocalEnterprise.Tests.Integration.csproj"
+    }
+  ],
+  "compounds": [
+    {
+      "name": ".NET: Backend stack",
+      "configurations": [
+        ".NET: LocalEnterprise.Api (http)",
+        ".NET: LocalEnterprise.Tests.Unit"
+      ]
+    }
+  ]
+}
