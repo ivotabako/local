@@ -2,6 +2,32 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "dotnet: build LocalEnterprise.Api",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "src/Backend/LocalEnterprise.Api/LocalEnterprise.Api.csproj"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dotnet: build tests",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "src/Backend/LocalEnterprise.slnx"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "dotnet: run LocalEnterprise.Api",
       "type": "shell",
       "command": "dotnet",

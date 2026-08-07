@@ -3,50 +3,50 @@
   "configurations": [
     {
       "name": ".NET: LocalEnterprise.Api (http)",
-      "type": "dotnet",
+      "type": "coreclr",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/src/Backend/LocalEnterprise.Api/LocalEnterprise.Api.csproj",
-      "launchBrowser": {
-        "enabled": true,
-        "args": "${auto-detect-url}",
-        "windows": {
-          "command": "cmd.exe"
-        }
-      },
+      "preLaunchTask": "dotnet: build LocalEnterprise.Api",
+      "program": "${workspaceFolder}/src/Backend/LocalEnterprise.Api/bin/Debug/net10.0/LocalEnterprise.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Backend/LocalEnterprise.Api",
+      "stopAtEntry": false,
+      "console": "internalConsole",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "cwd": "${workspaceFolder}/src/Backend/LocalEnterprise.Api"
+      }
     },
     {
       "name": ".NET: LocalEnterprise.Api (https)",
-      "type": "dotnet",
+      "type": "coreclr",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/src/Backend/LocalEnterprise.Api/LocalEnterprise.Api.csproj",
-      "launchBrowser": {
-        "enabled": true,
-        "args": "${auto-detect-url}",
-        "windows": {
-          "command": "cmd.exe"
-        }
-      },
+      "preLaunchTask": "dotnet: build LocalEnterprise.Api",
+      "program": "${workspaceFolder}/src/Backend/LocalEnterprise.Api/bin/Debug/net10.0/LocalEnterprise.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Backend/LocalEnterprise.Api",
+      "stopAtEntry": false,
+      "console": "internalConsole",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ASPNETCORE_URLS": "https://localhost:7243;http://localhost:5218"
-      },
-      "cwd": "${workspaceFolder}/src/Backend/LocalEnterprise.Api"
+      }
     },
     {
       "name": ".NET: LocalEnterprise.Tests.Unit",
-      "type": "dotnet",
+      "type": "coreclr",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/src/Backend/LocalEnterprise.Tests.Unit/LocalEnterprise.Tests.Unit.csproj"
+      "preLaunchTask": "dotnet: build tests",
+      "program": "${workspaceFolder}/src/Backend/LocalEnterprise.Tests.Unit/bin/Debug/net10.0/LocalEnterprise.Tests.Unit.dll",
+      "cwd": "${workspaceFolder}/src/Backend/LocalEnterprise.Tests.Unit",
+      "console": "internalConsole"
     },
     {
       "name": ".NET: LocalEnterprise.Tests.Integration",
-      "type": "dotnet",
+      "type": "coreclr",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/src/Backend/LocalEnterprise.Tests.Integration/LocalEnterprise.Tests.Integration.csproj"
+      "preLaunchTask": "dotnet: build tests",
+      "program": "${workspaceFolder}/src/Backend/LocalEnterprise.Tests.Integration/bin/Debug/net10.0/LocalEnterprise.Tests.Integration.dll",
+      "cwd": "${workspaceFolder}/src/Backend/LocalEnterprise.Tests.Integration",
+      "console": "internalConsole"
     }
   ],
   "compounds": [
