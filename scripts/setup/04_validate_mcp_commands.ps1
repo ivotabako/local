@@ -5,7 +5,7 @@ $packages = @(
     "@cyanheads/git-mcp-server",
     "@modelcontextprotocol/server-github",
     "@playwright/mcp",
-    "@siemens/ix-mcp-angular",
+    "@angular/cli",
     "roslyn-codelens-mcp",
     "@primeng/mcp",
     "mcp-remote",

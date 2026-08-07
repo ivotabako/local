@@ -53,6 +53,33 @@
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "dotnet: run LocalEnterprise.Auth",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "src/Backend/LocalEnterprise.Auth/LocalEnterprise.Auth.csproj"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "npm: start localenterprise-web",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "start"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/src/Frontend/localenterprise-web"
+      },
+      "problemMatcher": []
     }
   ]
 }

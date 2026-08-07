@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using LocalEnterprise.Application.Abstractions;
 using LocalEnterprise.Infrastructure.Configuration;
+using LocalEnterprise.Infrastructure.Persistence.Cars;
 using LocalEnterprise.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,6 +36,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IOrderRepository, MongoOrderRepository>();
+        services.AddScoped<ICarRepository, MongoCarRepository>();
         return services;
     }
 

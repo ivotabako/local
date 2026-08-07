@@ -25,7 +25,7 @@ Configured now in workspace MCP:
 - filesystem
 - git
 - browser
-- angular (`@siemens/ix-mcp-angular`)
+- angular-cli (`@angular/cli mcp`)
 - dotnet (`roslyn-codelens-mcp`)
 - primeng (`@primeng/mcp`)
 - microsoft_learn (`mcp-remote https://learn.microsoft.com/api/mcp`)
@@ -36,7 +36,7 @@ Important:
 - `@cyanheads/git-mcp-server` and `mcp-docker-server` are third-party packages.
 - Before production use, verify publisher reputation, pin versions, and run in least-privilege mode.
 - `roslyn-codelens-mcp` is third-party and should be treated as non-first-party.
-- `@siemens/ix-mcp-angular` is Angular-focused but tied to iX documentation ecosystem.
+- Use Angular's official MCP entry point: `npx @angular/cli mcp`.
 
 Microsoft backend guidance:
 

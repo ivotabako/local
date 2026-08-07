@@ -1,0 +1,94 @@
+<main class="page-shell">
+  <section class="hero">
+    <h1>{{ title() }}</h1>
+    <p>Angular zoneless UI + PrimeNG grid with a secure .NET minimal API and MongoDB.</p>
+  </section>
+
+  @if (!isAuthenticated()) {
+    <section class="panel">
+      <p-card header="Sign In">
+        <form class="form-grid" [formGroup]="loginForm" (ngSubmit)="login()">
+          <label>
+            Username
+            <input pInputText formControlName="username" autocomplete="username" />
+          </label>
+          <label>
+            Password
+            <p-password
+              formControlName="password"
+              [feedback]="false"
+              [toggleMask]="true"
+              autocomplete="current-password"
+            />
+          </label>
+          <button pButton type="submit" [disabled]="loading()">Get Access Token</button>
+        </form>
+        @if (authError()) {
+          <p class="error">{{ authError() }}</p>
+        }
+      </p-card>
+    </section>
+  } @else {
+    <section class="panel">
+      <p-card header="Cars CRUD">
+        <div class="actions">
+          <button pButton type="button" label="Refresh" icon="pi pi-refresh" [disabled]="loading()" (click)="loadCars()"></button>
+          <button pButton type="button" severity="secondary" label="Sign Out" icon="pi pi-sign-out" (click)="logout()"></button>
+        </div>
+
+        <form class="form-grid car-form" [formGroup]="carForm" (ngSubmit)="saveCar()">
+          <label>
+            Make
+            <input pInputText formControlName="make" />
+          </label>
+          <label>
+            Model
+            <input pInputText formControlName="model" />
+          </label>
+          <label>
+            Year
+            <input pInputText type="number" formControlName="year" />
+          </label>
+          <label>
+            VIN
+            <input pInputText formControlName="vin" />
+          </label>
+          <div class="button-row">
+            <button pButton type="submit" [disabled]="saving()">{{ saveButtonLabel() }}</button>
+            <button pButton type="button" severity="secondary" (click)="resetCarForm()">Reset</button>
+          </div>
+        </form>
+
+        <p-table [value]="cars()" [loading]="loading()" [tableStyle]="{ 'min-width': '52rem' }">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Make</th>
+              <th>Model</th>
+              <th>Year</th>
+              <th>VIN</th>
+              <th>Actions</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-car>
+            <tr>
+              <td>{{ car.make }}</td>
+              <td>{{ car.model }}</td>
+              <td>{{ car.year }}</td>
+              <td>{{ car.vin }}</td>
+              <td>
+                <div class="row-actions">
+                  <button pButton type="button" size="small" label="Edit" (click)="editCar(car)"></button>
+                  <button pButton type="button" size="small" severity="danger" label="Delete" (click)="deleteCar(car)"></button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </p-card>
+    </section>
+  }
+
+  @if (statusMessage()) {
+    <p class="status">{{ statusMessage() }}</p>
+  }
+</main>
