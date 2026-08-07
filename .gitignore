@@ -1,0 +1,9 @@
+# Local environment files
+.env
+.env.*
+
+# Benchmark outputs
+artifacts/
+
+# VS Code local state
+.vscode/settings.local.json

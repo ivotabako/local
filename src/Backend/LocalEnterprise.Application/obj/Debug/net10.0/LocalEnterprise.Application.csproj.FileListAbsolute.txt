@@ -1,0 +1,15 @@
+c:\projects\local\src\Backend\LocalEnterprise.Application\bin\Debug\net10.0\LocalEnterprise.Application.deps.json
+c:\projects\local\src\Backend\LocalEnterprise.Application\bin\Debug\net10.0\LocalEnterprise.Application.dll
+c:\projects\local\src\Backend\LocalEnterprise.Application\bin\Debug\net10.0\LocalEnterprise.Application.pdb
+c:\projects\local\src\Backend\LocalEnterprise.Application\bin\Debug\net10.0\LocalEnterprise.Domain.dll
+c:\projects\local\src\Backend\LocalEnterprise.Application\bin\Debug\net10.0\LocalEnterprise.Domain.pdb
+c:\projects\local\src\Backend\LocalEnterprise.Application\obj\Debug\net10.0\LocalEnterprise.Application.csproj.AssemblyReference.cache
+c:\projects\local\src\Backend\LocalEnterprise.Application\obj\Debug\net10.0\LocalEnterprise.Application.GeneratedMSBuildEditorConfig.editorconfig
+c:\projects\local\src\Backend\LocalEnterprise.Application\obj\Debug\net10.0\LocalEnterprise.Application.AssemblyInfoInputs.cache
+c:\projects\local\src\Backend\LocalEnterprise.Application\obj\Debug\net10.0\LocalEnterprise.Application.AssemblyInfo.cs
+c:\projects\local\src\Backend\LocalEnterprise.Application\obj\Debug\net10.0\LocalEnterprise.Application.csproj.CoreCompileInputs.cache
+c:\projects\local\src\Backend\LocalEnterprise.Application\obj\Debug\net10.0\LocalEnt.ECF9B4DF.Up2Date
+c:\projects\local\src\Backend\LocalEnterprise.Application\obj\Debug\net10.0\LocalEnterprise.Application.dll
+c:\projects\local\src\Backend\LocalEnterprise.Application\obj\Debug\net10.0\refint\LocalEnterprise.Application.dll
+c:\projects\local\src\Backend\LocalEnterprise.Application\obj\Debug\net10.0\LocalEnterprise.Application.pdb
+c:\projects\local\src\Backend\LocalEnterprise.Application\obj\Debug\net10.0\ref\LocalEnterprise.Application.dll

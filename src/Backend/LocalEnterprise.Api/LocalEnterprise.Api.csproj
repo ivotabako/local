@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LocalEnterprise.Application\LocalEnterprise.Application.csproj" />
+    <ProjectReference Include="..\LocalEnterprise.Infrastructure\LocalEnterprise.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>local-enterprise-api-dev</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

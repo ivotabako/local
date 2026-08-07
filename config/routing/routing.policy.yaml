@@ -1,0 +1,32 @@
+version: 2026-08
+default_mode: local_first
+
+routing:
+  local_first:
+    use_for:
+      - unit test scaffolding
+      - routine refactors
+      - private code analysis
+      - offline tasks
+      - internal docs
+    escalate_to_cloud_when:
+      - task_complexity_score >= 8
+      - two_local_attempts_fail
+      - architecture_tradeoff_requires_premium_reasoning
+      - latency_budget_exceeded_seconds: 90
+
+  cloud_first:
+    use_for:
+      - cross-repo architecture design
+      - difficult debugging with many interacting systems
+      - high-impact decisions requiring strongest model quality
+
+guardrails:
+  never_send_to_cloud:
+    - production secrets
+    - private keys
+    - customer PII payloads
+  redact_before_cloud:
+    - hostnames
+    - internal ticket IDs
+    - credential-like strings

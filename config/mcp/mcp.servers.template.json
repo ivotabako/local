@@ -1,0 +1,94 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "c:\\projects\\local"
+      ]
+    },
+    "git": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@cyanheads/git-mcp-server"
+      ]
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "SET_ME"
+      }
+    },
+    "browser": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp"
+      ]
+    },
+    "angular": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@siemens/ix-mcp-angular"
+      ]
+    },
+    "dotnet": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "roslyn-codelens-mcp",
+        "c:\\projects\\local\\src\\Backend\\LocalEnterprise.slnx"
+      ]
+    },
+    "primeng": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@primeng/mcp"
+      ]
+    },
+    "microsoft_learn": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://learn.microsoft.com/api/mcp"
+      ]
+    },
+    "mongodb": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mongodb-mcp-server",
+        "--readOnly"
+      ],
+      "env": {
+        "MDB_MCP_CONNECTION_STRING": "SET_ME"
+      }
+    },
+    "docker": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-docker-server"
+      ]
+    },
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres"
+      ],
+      "env": {
+        "POSTGRES_CONNECTION_STRING": "SET_ME"
+      }
+    }
+  }
+}

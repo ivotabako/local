@@ -1,0 +1,6 @@
+@BackendSmoke_HostAddress = http://localhost:5057
+
+GET {{BackendSmoke_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

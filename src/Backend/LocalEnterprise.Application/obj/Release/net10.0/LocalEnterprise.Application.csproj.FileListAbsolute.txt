@@ -1,0 +1,15 @@
+C:\projects\local\src\Backend\LocalEnterprise.Application\bin\Release\net10.0\LocalEnterprise.Application.deps.json
+C:\projects\local\src\Backend\LocalEnterprise.Application\bin\Release\net10.0\LocalEnterprise.Application.dll
+C:\projects\local\src\Backend\LocalEnterprise.Application\bin\Release\net10.0\LocalEnterprise.Application.pdb
+C:\projects\local\src\Backend\LocalEnterprise.Application\bin\Release\net10.0\LocalEnterprise.Domain.dll
+C:\projects\local\src\Backend\LocalEnterprise.Application\bin\Release\net10.0\LocalEnterprise.Domain.pdb
+C:\projects\local\src\Backend\LocalEnterprise.Application\obj\Release\net10.0\LocalEnterprise.Application.csproj.AssemblyReference.cache
+C:\projects\local\src\Backend\LocalEnterprise.Application\obj\Release\net10.0\LocalEnterprise.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\projects\local\src\Backend\LocalEnterprise.Application\obj\Release\net10.0\LocalEnterprise.Application.AssemblyInfoInputs.cache
+C:\projects\local\src\Backend\LocalEnterprise.Application\obj\Release\net10.0\LocalEnterprise.Application.AssemblyInfo.cs
+C:\projects\local\src\Backend\LocalEnterprise.Application\obj\Release\net10.0\LocalEnterprise.Application.csproj.CoreCompileInputs.cache
+C:\projects\local\src\Backend\LocalEnterprise.Application\obj\Release\net10.0\LocalEnt.ECF9B4DF.Up2Date
+C:\projects\local\src\Backend\LocalEnterprise.Application\obj\Release\net10.0\LocalEnterprise.Application.dll
+C:\projects\local\src\Backend\LocalEnterprise.Application\obj\Release\net10.0\refint\LocalEnterprise.Application.dll
+C:\projects\local\src\Backend\LocalEnterprise.Application\obj\Release\net10.0\LocalEnterprise.Application.pdb
+C:\projects\local\src\Backend\LocalEnterprise.Application\obj\Release\net10.0\ref\LocalEnterprise.Application.dll

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "code_refactor_small",
+    "prompt": "Refactor this Python function to reduce duplication while preserving behavior: def f(a,b,c): x=a+b; y=a+b+c; return x,y"
+  },
+  {
+    "id": "unit_test_generation",
+    "prompt": "Write table-driven unit tests in C# for a function that parses positive integers and rejects negatives or non-numeric values."
+  },
+  {
+    "id": "security_review_short",
+    "prompt": "List the top 5 security risks in a web API that logs full request bodies including credentials."
+  },
+  {
+    "id": "architecture_tradeoff",
+    "prompt": "Compare event sourcing vs state storage for a medium-sized order management system and provide decision criteria."
+  }
+]

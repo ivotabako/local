@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="BackendSmoke.Tests/BackendSmoke.Tests.csproj" />
+  <Project Path="BackendSmoke/BackendSmoke.csproj" />
+</Solution>

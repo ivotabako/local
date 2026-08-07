@@ -1,0 +1,4 @@
+title = "local-ai-workstation-gitleaks"
+
+[extend]
+useDefault = true

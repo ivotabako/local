@@ -1,0 +1,11 @@
+c:\projects\local\src\Backend\LocalEnterprise.Domain\bin\Debug\net10.0\LocalEnterprise.Domain.deps.json
+c:\projects\local\src\Backend\LocalEnterprise.Domain\bin\Debug\net10.0\LocalEnterprise.Domain.dll
+c:\projects\local\src\Backend\LocalEnterprise.Domain\bin\Debug\net10.0\LocalEnterprise.Domain.pdb
+c:\projects\local\src\Backend\LocalEnterprise.Domain\obj\Debug\net10.0\LocalEnterprise.Domain.GeneratedMSBuildEditorConfig.editorconfig
+c:\projects\local\src\Backend\LocalEnterprise.Domain\obj\Debug\net10.0\LocalEnterprise.Domain.AssemblyInfoInputs.cache
+c:\projects\local\src\Backend\LocalEnterprise.Domain\obj\Debug\net10.0\LocalEnterprise.Domain.AssemblyInfo.cs
+c:\projects\local\src\Backend\LocalEnterprise.Domain\obj\Debug\net10.0\LocalEnterprise.Domain.csproj.CoreCompileInputs.cache
+c:\projects\local\src\Backend\LocalEnterprise.Domain\obj\Debug\net10.0\LocalEnterprise.Domain.dll
+c:\projects\local\src\Backend\LocalEnterprise.Domain\obj\Debug\net10.0\refint\LocalEnterprise.Domain.dll
+c:\projects\local\src\Backend\LocalEnterprise.Domain\obj\Debug\net10.0\LocalEnterprise.Domain.pdb
+c:\projects\local\src\Backend\LocalEnterprise.Domain\obj\Debug\net10.0\ref\LocalEnterprise.Domain.dll

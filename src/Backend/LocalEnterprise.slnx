@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="LocalEnterprise.Api/LocalEnterprise.Api.csproj" />
+  <Project Path="LocalEnterprise.Application/LocalEnterprise.Application.csproj" />
+  <Project Path="LocalEnterprise.Domain/LocalEnterprise.Domain.csproj" />
+  <Project Path="LocalEnterprise.Infrastructure/LocalEnterprise.Infrastructure.csproj" />
+  <Project Path="LocalEnterprise.Tests.Integration/LocalEnterprise.Tests.Integration.csproj" />
+  <Project Path="LocalEnterprise.Tests.Unit/LocalEnterprise.Tests.Unit.csproj" />
+</Solution>

@@ -1,0 +1,32 @@
+version: 2026-08
+
+security:
+  principles:
+    - least_privilege
+    - explicit_approval_for_actions
+    - local_first_for_sensitive_data
+    - auditable_tool_usage
+
+secrets:
+  rules:
+    - do_not_store_plaintext_secrets_in_repo
+    - use_environment_variables_or_secret_manager
+    - rotate_tokens_every_90_days
+    - enable_secret_scanning_in_ci
+
+network:
+  policy:
+    default_outbound: allow_required_only
+    block_unneeded_external_calls: true
+
+mcp:
+  defaults:
+    read_only_by_default: true
+    allowlist_servers_only: true
+    workspace_path_scope_required: true
+    log_tool_invocations: true
+
+compliance:
+  references:
+    - owasp_asvs
+    - owasp_top_10

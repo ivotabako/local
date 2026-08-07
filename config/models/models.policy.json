@@ -1,0 +1,25 @@
+{
+  "version": "2026-08",
+  "roles": {
+    "coding": {
+      "primary": "qwen2.5:7b-instruct",
+      "fallback": "llama3:latest",
+      "selectionPolicy": "benchmark-driven"
+    },
+    "reasoning": {
+      "primary": "llama3:latest",
+      "fallback": "qwen2.5:7b-instruct",
+      "selectionPolicy": "benchmark-driven"
+    },
+    "embeddings": {
+      "primary": "nomic-embed-text",
+      "fallback": "all-minilm",
+      "selectionPolicy": "quality-per-latency"
+    }
+  },
+  "lifecycle": {
+    "reviewCadenceDays": 30,
+    "rollbackRequired": true,
+    "pinByDigestWhenPossible": true
+  }
+}
