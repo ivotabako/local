@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using LocalEnterprise.Application.Abstractions;
 using LocalEnterprise.Infrastructure.Configuration;
 using LocalEnterprise.Infrastructure.Persistence.Cars;
+using LocalEnterprise.Infrastructure.Persistence.Identity;
 using LocalEnterprise.Infrastructure.Persistence;
+using LocalEnterprise.Infrastructure.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -37,6 +39,9 @@ public static class DependencyInjection
 
         services.AddScoped<IOrderRepository, MongoOrderRepository>();
         services.AddScoped<ICarRepository, MongoCarRepository>();
+        services.AddScoped<IUserAccountRepository, MongoUserAccountRepository>();
+        services.AddSingleton<IPasswordHashService, AspNetPasswordHashService>();
+        services.AddSingleton<IMfaService, OtpNetMfaService>();
         return services;
     }
 

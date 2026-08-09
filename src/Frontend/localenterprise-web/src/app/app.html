@@ -1,82 +1,49 @@
 <main class="page-shell">
-  <section class="hero">
-    <h1>{{ title() }}</h1>
-    <p>Angular zoneless UI + Optimus UI grid with a secure .NET minimal API and MongoDB.</p>
-  </section>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">LocalEnterprise</p>
+      <h1>{{ title() }}</h1>
+      <p class="subtitle">Persistent auth users, admin management, and password lifecycle controls backed by OpenIddict, MongoDB, and Angular 22.</p>
+    </div>
 
-  @if (!isAuthenticated()) {
-    <section class="panel">
-      <p-card header="Sign In">
-        <p>Use the authorization server login to get an access token via Authorization Code + PKCE.</p>
-        <form class="form-grid" novalidate (submit)="login($event)">
-          <button pButton type="submit" [disabled]="loading()">Sign In</button>
-        </form>
-        @if (authError()) {
-          <p class="error">{{ authError() }}</p>
-        }
-      </p-card>
-    </section>
-  } @else {
-    <section class="panel">
-      <p-card header="Cars CRUD">
-        <div class="actions">
-          <button pButton type="button" label="Refresh" icon="pi pi-refresh" [disabled]="loading()" (click)="loadCars()"></button>
-          <button pButton type="button" severity="secondary" label="Sign Out" icon="pi pi-sign-out" (click)="logout()"></button>
-        </div>
+    <div class="hero-actions">
+      @if (isAuthenticated()) {
+        <div class="user-chip">{{ currentUser()?.username ?? 'Authenticated' }}</div>
+        <button pButton type="button" severity="secondary" (click)="logout()">Sign Out</button>
+      } @else {
+        <button pButton type="button" (click)="login($event)">Sign In</button>
+      }
+    </div>
+  </header>
 
-        <form class="form-grid car-form" novalidate (submit)="saveCar($event)">
-          <label>
-            Make
-            <input pInputText [formField]="carForm.make" />
-          </label>
-          <label>
-            Model
-            <input pInputText [formField]="carForm.model" />
-          </label>
-          <label>
-            Year
-            <input pInputText type="number" [formField]="carForm.year" />
-          </label>
-          <label>
-            VIN
-            <input pInputText [formField]="carForm.vin" />
-          </label>
-          <div class="button-row">
-            <button pButton type="submit" [disabled]="saving() || carForm().invalid()">{{ saveButtonLabel() }}</button>
-            <button pButton type="button" severity="secondary" (click)="resetCarForm()">Reset</button>
-          </div>
-        </form>
+  <nav class="site-nav">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Overview</a>
+    @if (isAuthenticated()) {
+      <a routerLink="/cars" routerLinkActive="active">Cars</a>
+      <a routerLink="/account" routerLinkActive="active">Account</a>
+      @if (isAdmin()) {
+        <a routerLink="/admin/users" routerLinkActive="active">Users</a>
+      }
+    }
+  </nav>
 
-        <p-table [value]="cars()" [loading]="loading()" [tableStyle]="{ 'min-width': '52rem' }">
-          <ng-template pTemplate="header">
-            <tr>
-              <th>Make</th>
-              <th>Model</th>
-              <th>Year</th>
-              <th>VIN</th>
-              <th>Actions</th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-car>
-            <tr>
-              <td>{{ car.make }}</td>
-              <td>{{ car.model }}</td>
-              <td>{{ car.year }}</td>
-              <td>{{ car.vin }}</td>
-              <td>
-                <div class="row-actions">
-                  <button pButton type="button" size="small" label="Edit" (click)="editCar(car)"></button>
-                  <button pButton type="button" size="small" severity="danger" label="Delete" (click)="deleteCar(car)"></button>
-                </div>
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </p-card>
+  @if (currentUser()?.requiresPasswordChange) {
+    <section class="password-banner">
+      <p>Password change is required before protected app routes are available.</p>
+      <a routerLink="/account/password">Open password change</a>
     </section>
   }
 
-  @if (statusMessage()) {
-    <p class="status">{{ statusMessage() }}</p>
+  @if (notifications().length > 0) {
+    <section class="notification-stack" aria-live="polite">
+      @for (notification of notifications(); track notification.id) {
+        <article class="notification-card" [class.error]="notification.kind === 'error'" [class.success]="notification.kind === 'success'" [class.info]="notification.kind === 'info'">
+          <p>{{ notification.message }}</p>
+          <button type="button" class="dismiss" (click)="dismissNotification(notification.id)">Dismiss</button>
+        </article>
+      }
+    </section>
   }
+
+  <router-outlet />
 </main>

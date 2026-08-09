@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, catchError, firstValueFrom, map, of, switchMap, tap } from 'rxjs';
 import { apiConfig } from './api-config';
+import { ChangePasswordRequest, TwoFactorEnrollment, TwoFactorVerificationResult, UserAccount } from '../models/user-account';
 
 interface TokenResponse {
   access_token: string;
@@ -11,11 +12,17 @@ interface TokenResponse {
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly tokenValue = signal<string | null>(null);
+  private readonly currentUserValue = signal<UserAccount | null>(null);
+  private readonly currentUserLoadedValue = signal(false);
   private readonly pkceStateKey = 'localenterprise.auth.pkce.state';
   private readonly pkceVerifierKey = 'localenterprise.auth.pkce.verifier';
 
   readonly token = this.tokenValue.asReadonly();
   readonly isAuthenticated = computed(() => !!this.tokenValue());
+  readonly currentUser = this.currentUserValue.asReadonly();
+  readonly currentUserLoaded = this.currentUserLoadedValue.asReadonly();
+  readonly isAdmin = computed(() => this.currentUser()?.roles.includes('Admin') ?? false);
+  readonly requiresPasswordChange = computed(() => this.currentUser()?.requiresPasswordChange ?? false);
 
   async beginAuthorizationCodeLogin(redirectUri: string): Promise<string> {
     const state = this.generateRandomString(32);
@@ -68,10 +75,10 @@ export class AuthService {
         }
       })
       .pipe(
-        map((result) => {
+        tap((result) => {
           this.tokenValue.set(result.access_token);
-          return result;
-        })
+        }),
+        switchMap((result) => this.loadCurrentUser().pipe(map(() => result)))
       );
   }
 
@@ -89,7 +96,60 @@ export class AuthService {
 
   logout(): void {
     this.tokenValue.set(null);
+    this.currentUserValue.set(null);
+    this.currentUserLoadedValue.set(false);
     this.clearPkceArtifacts();
+  }
+
+  loadCurrentUser(): Observable<UserAccount> {
+    return this.http.get<UserAccount>(`${apiConfig.authBaseUrl}/api/users/me`).pipe(
+      tap((user) => {
+        this.currentUserValue.set(user);
+        this.currentUserLoadedValue.set(true);
+      })
+    );
+  }
+
+  async ensureCurrentUserLoaded(): Promise<boolean> {
+    if (!this.isAuthenticated()) {
+      return false;
+    }
+
+    if (this.currentUserLoadedValue() && this.currentUserValue() !== null) {
+      return true;
+    }
+
+    return firstValueFrom(
+      this.loadCurrentUser().pipe(
+        map(() => true),
+        catchError(() => {
+          this.logout();
+          return of(false);
+        })
+      )
+    );
+  }
+
+  changePassword(request: ChangePasswordRequest): Observable<UserAccount> {
+    return this.http.post<UserAccount>(`${apiConfig.authBaseUrl}/api/users/change-password`, request).pipe(
+      tap((user) => {
+        this.currentUserValue.set(user);
+        this.currentUserLoadedValue.set(true);
+      })
+    );
+  }
+
+  beginTwoFactorEnrollment(): Observable<TwoFactorEnrollment> {
+    return this.http.post<TwoFactorEnrollment>(`${apiConfig.authBaseUrl}/api/users/me/2fa/enrollment`, {});
+  }
+
+  verifyTwoFactor(code: string): Observable<TwoFactorVerificationResult> {
+    return this.http.post<TwoFactorVerificationResult>(`${apiConfig.authBaseUrl}/api/users/me/2fa/verify`, { code }).pipe(
+      tap((result) => {
+        this.currentUserValue.set(result.user);
+        this.currentUserLoadedValue.set(true);
+      })
+    );
   }
 
   private clearPkceArtifacts(): void {

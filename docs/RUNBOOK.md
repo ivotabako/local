@@ -103,12 +103,13 @@ dotnet user-secrets set "Jwt:Issuer" "https://localhost:7081"
 dotnet user-secrets set "Jwt:Audience" "localenterprise.api"
 
 cd ../LocalEnterprise.Auth
-$hash = dotnet run -- hash-password "<local dev password>"
+dotnet user-secrets set "MongoDb:ConnectionString" "mongodb://<user>:<password>@localhost:27017/admin"
+dotnet user-secrets set "MongoDb:DatabaseName" "local-enterprise-dev"
 dotnet user-secrets set "Jwt:Issuer" "https://localhost:7081"
 dotnet user-secrets set "Jwt:Audience" "localenterprise.api"
-dotnet user-secrets set "Auth:Users:0:Username" "apiadmin"
-dotnet user-secrets set "Auth:Users:0:PasswordHash" "$hash"
-dotnet user-secrets set "Auth:Users:0:Roles:0" "Admin"
+dotnet user-secrets set "Auth:BootstrapAdmin:Username" "apiadmin"
+dotnet user-secrets set "Auth:BootstrapAdmin:Password" "<local dev password>"
+dotnet user-secrets set "Auth:BootstrapAdmin:Roles:0" "Admin"
 ```
 
 `LocalEnterprise.Auth` issues tokens through OpenIddict and the SPA uses Authorization Code + PKCE for local development sign-in.

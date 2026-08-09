@@ -2,29 +2,31 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using LocalEnterprise.Auth.Security;
-using Microsoft.AspNetCore.Identity;
+using LocalEnterprise.Auth;
 using Microsoft.AspNetCore.Mvc.Testing;
+using OtpNet;
 
 namespace LocalEnterprise.Tests.Integration;
 
-public class TokenEndpointTests : IClassFixture<WebApplicationFactory<AuthUser>>
+[Collection("Environment variables")]
+public class TokenEndpointTests : IClassFixture<WebApplicationFactory<AuthAssemblyMarker>>
 {
     private const string ValidPassword = "CorrectHorseBatteryStaple_123!";
 
-    private readonly WebApplicationFactory<AuthUser> _factory;
+    private readonly string _databaseName;
+    private readonly WebApplicationFactory<AuthAssemblyMarker> _factory;
 
-    public TokenEndpointTests(WebApplicationFactory<AuthUser> factory)
+    public TokenEndpointTests(WebApplicationFactory<AuthAssemblyMarker> factory)
     {
-        var templateUser = new AuthUser { Username = "apiadmin" };
-        var passwordHasher = new PasswordHasher<AuthUser>();
-        var passwordHash = passwordHasher.HashPassword(templateUser, ValidPassword);
+        _databaseName = $"test-local-enterprise-auth-{Guid.NewGuid():N}";
 
+        Environment.SetEnvironmentVariable("MongoDb__ConnectionString", IntegrationMongoSettings.ResolveConnectionString());
+        Environment.SetEnvironmentVariable("MongoDb__DatabaseName", _databaseName);
         Environment.SetEnvironmentVariable("Jwt__Issuer", "https://localhost:7081");
         Environment.SetEnvironmentVariable("Jwt__Audience", "localenterprise.api");
-        Environment.SetEnvironmentVariable("Auth__Users__0__Username", templateUser.Username);
-        Environment.SetEnvironmentVariable("Auth__Users__0__PasswordHash", passwordHash);
-        Environment.SetEnvironmentVariable("Auth__Users__0__Roles__0", "Admin");
+        Environment.SetEnvironmentVariable("Auth__BootstrapAdmin__Username", "apiadmin");
+        Environment.SetEnvironmentVariable("Auth__BootstrapAdmin__Password", ValidPassword);
+        Environment.SetEnvironmentVariable("Auth__BootstrapAdmin__Roles__0", "Admin");
 
         _factory = factory;
     }
@@ -169,6 +171,301 @@ public class TokenEndpointTests : IClassFixture<WebApplicationFactory<AuthUser>>
         Assert.StartsWith("/account/login", authorizeAfterLogoutResponse.Headers.Location!.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task UsersMe_ReturnsCurrentAuthenticatedUser()
+    {
+        using var client = CreateSecureClient();
+        var token = await AuthorizeInteractiveLoginAndGetTokenAsync();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/users/me");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(payload);
+        Assert.Equal("apiadmin", payload!.Username);
+        Assert.Contains("Admin", payload.Roles, StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public async Task AdminCrud_CreatesUpdatesListsAndDeletesUsers()
+    {
+        using var client = CreateSecureClient();
+        var token = await AuthorizeInteractiveLoginAndGetTokenAsync();
+
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+            Content = JsonContent.Create(new
+            {
+                username = "reader.user",
+                password = "ReaderPassword_1234!",
+                roles = new[] { "Reader" }
+            })
+        };
+
+        var createResponse = await client.SendAsync(createRequest);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        var created = await createResponse.Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(created);
+
+        var listRequest = new HttpRequestMessage(HttpMethod.Get, "/api/users/");
+        listRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var listResponse = await client.SendAsync(listRequest);
+        listResponse.EnsureSuccessStatusCode();
+        var users = await listResponse.Content.ReadFromJsonAsync<List<UserPayload>>();
+        Assert.NotNull(users);
+        Assert.Contains(users!, x => x.Username == "reader.user");
+        Assert.Contains(users!, x => x.Username == "reader.user" && x.RequiresPasswordChange);
+
+        var updateRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/users/{created!.Id}")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+            Content = JsonContent.Create(new
+            {
+                roles = new[] { "Writer" }
+            })
+        };
+
+        var updateResponse = await client.SendAsync(updateRequest);
+        updateResponse.EnsureSuccessStatusCode();
+        var updated = await updateResponse.Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(updated);
+        Assert.Contains("Writer", updated!.Roles, StringComparer.Ordinal);
+
+        var deleteRequest = new HttpRequestMessage(HttpMethod.Delete, $"/api/users/{created.Id}");
+        deleteRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var deleteResponse = await client.SendAsync(deleteRequest);
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangePassword_ClearsRequiredFlag_ForCurrentUser()
+    {
+        using var adminClient = CreateSecureClient();
+        var adminToken = await AuthorizeInteractiveLoginAndGetTokenAsync();
+
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", adminToken) },
+            Content = JsonContent.Create(new
+            {
+                username = "writer.user",
+                password = "WriterPassword_1234!",
+                roles = new[] { "Writer" }
+            })
+        };
+
+        var createResponse = await adminClient.SendAsync(createRequest);
+        createResponse.EnsureSuccessStatusCode();
+
+        using var client = CreateSecureClient();
+        var token = await AuthorizeInteractiveLoginAndGetTokenAsync("writer.user", "WriterPassword_1234!");
+
+        var meBeforeRequest = new HttpRequestMessage(HttpMethod.Get, "/api/users/me");
+        meBeforeRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var meBefore = await client.SendAsync(meBeforeRequest);
+        meBefore.EnsureSuccessStatusCode();
+        var beforePayload = await meBefore.Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(beforePayload);
+        Assert.True(beforePayload!.RequiresPasswordChange);
+
+        var changeRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/change-password")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+            Content = JsonContent.Create(new
+            {
+                currentPassword = "WriterPassword_1234!",
+                newPassword = "WriterPassword_5678!"
+            })
+        };
+
+        var changeResponse = await client.SendAsync(changeRequest);
+        changeResponse.EnsureSuccessStatusCode();
+        var changedPayload = await changeResponse.Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(changedPayload);
+        Assert.False(changedPayload!.RequiresPasswordChange);
+
+        var meAfterRequest = new HttpRequestMessage(HttpMethod.Get, "/api/users/me");
+        meAfterRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var meAfter = await client.SendAsync(meAfterRequest);
+        meAfter.EnsureSuccessStatusCode();
+        var afterPayload = await meAfter.Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(afterPayload);
+        Assert.False(afterPayload!.RequiresPasswordChange);
+    }
+
+    [Fact]
+    public async Task LockedUser_CannotLogin_UntilUnlockedByAdmin()
+    {
+        using var adminClient = CreateSecureClient();
+        var adminToken = await AuthorizeInteractiveLoginAndGetTokenAsync();
+
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", adminToken) },
+            Content = JsonContent.Create(new
+            {
+                username = "locked.user",
+                password = "LockedPassword_1234!",
+                roles = new[] { "Reader" }
+            })
+        };
+
+        var created = await (await adminClient.SendAsync(createRequest)).Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(created);
+
+        using var lockRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/users/{created!.Id}/lock");
+        lockRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var lockResponse = await adminClient.SendAsync(lockRequest);
+        lockResponse.EnsureSuccessStatusCode();
+
+        using var blockedClient = CreateSecureClient(allowAutoRedirect: false, handleCookies: true);
+        var authorizePath =
+            $"/connect/authorize?client_id=localenterprise-web&response_type=code&redirect_uri={Uri.EscapeDataString("https://localhost:4200/auth/callback")}&scope=localenterprise.api&state=locked-state&code_challenge=locked-verifier&code_challenge_method=plain";
+        var authorizeResponse = await blockedClient.GetAsync(authorizePath);
+        var returnUrl = ExtractQueryParameter(authorizeResponse.Headers.Location!, "returnUrl");
+
+        using var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/account/login")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["username"] = "locked.user",
+                ["password"] = "LockedPassword_1234!",
+                ["returnUrl"] = returnUrl
+            })
+        };
+
+        var loginResponse = await blockedClient.SendAsync(loginRequest);
+        Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
+        Assert.Contains("error=", loginResponse.Headers.Location!.ToString(), StringComparison.Ordinal);
+
+        using var unlockRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/users/{created.Id}/unlock");
+        unlockRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var unlockResponse = await adminClient.SendAsync(unlockRequest);
+        unlockResponse.EnsureSuccessStatusCode();
+
+        var token = await AuthorizeInteractiveLoginAndGetTokenAsync("locked.user", "LockedPassword_1234!");
+        Assert.False(string.IsNullOrWhiteSpace(token));
+    }
+
+    [Fact]
+    public async Task AdminResetPassword_RequiresPasswordChange_And_TwoFactorChallengeIsEnforced()
+    {
+        using var adminClient = CreateSecureClient();
+        var adminToken = await AuthorizeInteractiveLoginAndGetTokenAsync();
+
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", adminToken) },
+            Content = JsonContent.Create(new
+            {
+                username = "mfa.user",
+                password = "StartPassword_1234!",
+                roles = new[] { "Writer" }
+            })
+        };
+
+        var created = await (await adminClient.SendAsync(createRequest)).Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(created);
+
+        var resetRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/users/{created!.Id}/reset-password")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", adminToken) },
+            Content = JsonContent.Create(new
+            {
+                newPassword = "ResetPassword_5678!"
+            })
+        };
+
+        var resetResponse = await adminClient.SendAsync(resetRequest);
+        resetResponse.EnsureSuccessStatusCode();
+        var resetPayload = await resetResponse.Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(resetPayload);
+        Assert.True(resetPayload!.RequiresPasswordChange);
+
+        var userToken = await AuthorizeInteractiveLoginAndGetTokenAsync("mfa.user", "ResetPassword_5678!");
+        using var meRequest = new HttpRequestMessage(HttpMethod.Get, "/api/users/me");
+        meRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userToken);
+        var meResponse = await adminClient.SendAsync(meRequest);
+        meResponse.EnsureSuccessStatusCode();
+        var mePayload = await meResponse.Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(mePayload);
+        Assert.True(mePayload!.RequiresPasswordChange);
+
+        var changeRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/change-password")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", userToken) },
+            Content = JsonContent.Create(new
+            {
+                currentPassword = "ResetPassword_5678!",
+                newPassword = "ChangedPassword_9012!"
+            })
+        };
+
+        var changeResponse = await adminClient.SendAsync(changeRequest);
+        changeResponse.EnsureSuccessStatusCode();
+
+        var enrollmentRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/me/2fa/enrollment");
+        enrollmentRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userToken);
+        var enrollmentResponse = await adminClient.SendAsync(enrollmentRequest);
+        enrollmentResponse.EnsureSuccessStatusCode();
+        var enrollmentPayload = await enrollmentResponse.Content.ReadFromJsonAsync<TwoFactorEnrollmentPayload>();
+        Assert.NotNull(enrollmentPayload);
+
+        var totpCode = new Totp(Base32Encoding.ToBytes(enrollmentPayload!.SharedSecret)).ComputeTotp();
+
+        var verifyRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/me/2fa/verify")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", userToken) },
+            Content = JsonContent.Create(new
+            {
+                code = totpCode
+            })
+        };
+
+        var verifyResponse = await adminClient.SendAsync(verifyRequest);
+        verifyResponse.EnsureSuccessStatusCode();
+        var verifyPayload = await verifyResponse.Content.ReadFromJsonAsync<TwoFactorVerificationPayload>();
+        Assert.NotNull(verifyPayload);
+        Assert.Equal(8, verifyPayload!.RecoveryCodes.Length);
+
+        using var loginClient = CreateSecureClient(allowAutoRedirect: false, handleCookies: true);
+        var authorizePath =
+            $"/connect/authorize?client_id=localenterprise-web&response_type=code&redirect_uri={Uri.EscapeDataString("https://localhost:4200/auth/callback")}&scope=localenterprise.api&state=mfa-state&code_challenge=mfa-verifier&code_challenge_method=plain";
+        var authorizeResponse = await loginClient.GetAsync(authorizePath);
+        var returnUrl = ExtractQueryParameter(authorizeResponse.Headers.Location!, "returnUrl");
+
+        using var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/account/login")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["username"] = "mfa.user",
+                ["password"] = "ChangedPassword_9012!",
+                ["returnUrl"] = returnUrl
+            })
+        };
+
+        var loginResponse = await loginClient.SendAsync(loginRequest);
+        Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
+        Assert.StartsWith("/account/login-2fa", loginResponse.Headers.Location!.ToString(), StringComparison.Ordinal);
+
+        using var twoFactorRequest = new HttpRequestMessage(HttpMethod.Post, "/account/login-2fa")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["code"] = verifyPayload.RecoveryCodes[0],
+                ["returnUrl"] = returnUrl
+            })
+        };
+
+        var twoFactorResponse = await loginClient.SendAsync(twoFactorRequest);
+        Assert.Equal(HttpStatusCode.Redirect, twoFactorResponse.StatusCode);
+        Assert.NotNull(twoFactorResponse.Headers.Location);
+    }
+
     private static HttpRequestMessage CreatePasswordGrantRequest(string password)
     {
         return new HttpRequestMessage(HttpMethod.Post, "/connect/token")
@@ -192,6 +489,55 @@ public class TokenEndpointTests : IClassFixture<WebApplicationFactory<AuthUser>>
             AllowAutoRedirect = allowAutoRedirect,
             HandleCookies = handleCookies
         });
+    }
+
+    private async Task<string> AuthorizeInteractiveLoginAndGetTokenAsync(string username = "apiadmin", string password = ValidPassword)
+    {
+        const string redirectUri = "https://localhost:4200/auth/callback";
+        const string state = "state-auth-users";
+        const string verifier = "plain-verifier-auth-users";
+
+        using var client = CreateSecureClient(allowAutoRedirect: false, handleCookies: true);
+
+        var authorizePath =
+            $"/connect/authorize?client_id=localenterprise-web&response_type=code&redirect_uri={Uri.EscapeDataString(redirectUri)}&scope=localenterprise.api&state={state}&code_challenge={verifier}&code_challenge_method=plain";
+
+        var authorizeResponse = await client.GetAsync(authorizePath);
+        var returnUrl = ExtractQueryParameter(authorizeResponse.Headers.Location!, "returnUrl");
+
+        using var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/account/login")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["username"] = username,
+                ["password"] = password,
+                ["returnUrl"] = returnUrl
+            })
+        };
+
+        var loginResponse = await client.SendAsync(loginRequest);
+        var continueAuthorizeResponse = await client.GetAsync(loginResponse.Headers.Location);
+        var callbackUri = continueAuthorizeResponse.Headers.Location!;
+        var authorizationCode = ExtractQueryParameter(callbackUri, "code");
+
+        using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, "/connect/token")
+        {
+            Headers = { Accept = { new MediaTypeWithQualityHeaderValue("application/json") } },
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code",
+                ["client_id"] = "localenterprise-web",
+                ["code"] = authorizationCode,
+                ["redirect_uri"] = redirectUri,
+                ["code_verifier"] = verifier
+            })
+        };
+
+        var tokenResponse = await client.SendAsync(tokenRequest);
+        tokenResponse.EnsureSuccessStatusCode();
+        var payload = await tokenResponse.Content.ReadFromJsonAsync<TokenResponse>();
+        Assert.NotNull(payload);
+        return payload!.access_token;
     }
 
     private static string ExtractQueryParameter(Uri uri, string key)
@@ -237,6 +583,9 @@ public class TokenEndpointTests : IClassFixture<WebApplicationFactory<AuthUser>>
     }
 
     private sealed record TokenResponse(string access_token, string token_type, int expires_in);
+    private sealed record UserPayload(Guid Id, string Username, string[] Roles, DateTime CreatedAt, string? CreatedBy, bool RequiresPasswordChange, DateTime? LastPasswordChangedAt, bool IsLocked = false, bool TwoFactorEnabled = false, int RecoveryCodesRemaining = 0);
+    private sealed record TwoFactorEnrollmentPayload(string SharedSecret, string ProvisioningUri, bool TwoFactorEnabled);
+    private sealed record TwoFactorVerificationPayload(UserPayload User, string[] RecoveryCodes);
     private sealed record OpenIdErrorResponse(string error, string? error_description);
 
     private sealed record OpenIdConfiguration(
