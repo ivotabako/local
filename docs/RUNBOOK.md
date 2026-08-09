@@ -27,9 +27,10 @@ Configured now in workspace MCP:
 - browser
 - angular-cli (`@angular/cli mcp`)
 - dotnet (`roslyn-codelens-mcp`)
-- primeng (`@primeng/mcp`)
 - microsoft_learn (`mcp-remote https://learn.microsoft.com/api/mcp`)
 - mongodb (`mongodb-mcp-server` in `--readOnly` mode)
+
+Note: there is currently no official Optimus UI MCP server package published on npm.
 
 Important:
 

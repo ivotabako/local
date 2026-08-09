@@ -6,6 +6,19 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? ["https://localhost:4200", "http://localhost:4200"];
+
+        policy.WithOrigins(origins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 if (string.IsNullOrWhiteSpace(jwtOptions.Issuer) ||
     string.IsNullOrWhiteSpace(jwtOptions.Audience) ||
@@ -15,14 +28,18 @@ if (string.IsNullOrWhiteSpace(jwtOptions.Issuer) ||
 }
 
 var users = builder.Configuration.GetSection("Auth:Users").Get<List<AuthUser>>() ?? [];
-if (users.Count == 0)
+if (users.Count == 0 || users.Any(x =>
+        string.IsNullOrWhiteSpace(x.Username) ||
+        string.IsNullOrWhiteSpace(x.Password)))
 {
-    throw new InvalidOperationException("No auth users configured. Add Auth:Users entries in appsettings.");
+    throw new InvalidOperationException(
+        "No valid auth users configured. Add Auth:Users entries with username/password in user secrets or appsettings.");
 }
 
 var app = builder.Build();
 
 app.UseHttpsRedirection();
+app.UseCors("Frontend");
 
 app.MapGet("/", () => Results.Ok(new { service = "LocalEnterprise.Auth", status = "running" }));
 

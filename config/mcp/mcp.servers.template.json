@@ -47,13 +47,6 @@
         "c:\\projects\\local\\src\\Backend\\LocalEnterprise.slnx"
       ]
     },
-    "primeng": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@primeng/mcp"
-      ]
-    },
     "microsoft_learn": {
       "command": "npx",
       "args": [

@@ -2,7 +2,7 @@
 
 This workspace now includes a full baseline for:
 
-- Angular 22 zoneless frontend with PrimeNG CRUD grid
+- Angular 22 zoneless frontend with Optimus UI CRUD grid
 - .NET 10 minimal API (`LocalEnterprise.Api`) with JWT authorization
 - .NET 10 auth/token issuer (`LocalEnterprise.Auth`)
 - MongoDB persistence in infrastructure layer

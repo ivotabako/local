@@ -23,6 +23,12 @@ artifacts/
 **/appsettings.Local.json
 **/secrets.json
 
+# Local development certificates and keys
+scripts/run/*.pfx
+scripts/run/*.cer
+scripts/run/localhost.crt
+scripts/run/localhost.key
+
 # OS / editor noise
 **/.DS_Store
 **/Thumbs.db

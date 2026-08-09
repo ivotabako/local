@@ -7,7 +7,6 @@ $packages = @(
     "@playwright/mcp",
     "@angular/cli",
     "roslyn-codelens-mcp",
-    "@primeng/mcp",
     "mcp-remote",
     "@microsoft/learn-cli",
     "mongodb-mcp-server",
