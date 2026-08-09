@@ -1,0 +1,37 @@
+name: Angular Frontend Gates
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    paths:
+      - "src/Frontend/localenterprise-web/**"
+      - ".github/workflows/angular-frontend-gates.yml"
+  pull_request:
+    branches: [ "main", "master" ]
+    paths:
+      - "src/Frontend/localenterprise-web/**"
+      - ".github/workflows/angular-frontend-gates.yml"
+
+jobs:
+  frontend-quality:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src/Frontend/localenterprise-web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: src/Frontend/localenterprise-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend quality gates
+        run: npm run quality:all
