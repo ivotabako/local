@@ -5,11 +5,13 @@ on:
     branches: [ "main", "master" ]
     paths:
       - "src/Frontend/localenterprise-web/**"
+      - ".github/instructions/angular-frontend.instructions.md"
       - ".github/workflows/angular-frontend-gates.yml"
   pull_request:
     branches: [ "main", "master" ]
     paths:
       - "src/Frontend/localenterprise-web/**"
+      - ".github/instructions/angular-frontend.instructions.md"
       - ".github/workflows/angular-frontend-gates.yml"
 
 jobs:
@@ -33,5 +35,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run frontend quality gates
-        run: npm run quality:all
+      - name: Run frontend standards gate
+        run: npm run quality:standards
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run frontend tests
+        run: npm run test:ci

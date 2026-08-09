@@ -17,7 +17,12 @@ const checks = [
   { pattern: /\[formGroup\]/g, message: '[formGroup] is forbidden. Use signal forms.' },
   { pattern: /\[\(ngModel\)\]/g, message: '[(ngModel)] is forbidden. Use signal state + [formField].' },
   { pattern: /provideZoneChangeDetection\s*\(/g, message: 'provideZoneChangeDetection is forbidden. Keep zoneless mode.' },
-  { pattern: /from\s+['"]zone\.js(?:\/testing)?['"]/g, message: 'zone.js imports are forbidden in zoneless apps.' }
+  { pattern: /from\s+['"]zone\.js(?:\/testing)?['"]/g, message: 'zone.js imports are forbidden in zoneless apps.' },
+  {
+    pattern: /\bpassword\s*:\s*['"`][^'"`\r\n]+['"`]/g,
+    message: 'Non-empty password literals are forbidden in frontend source. Prompt at runtime instead.',
+    appliesTo: (relativePath) => relativePath.endsWith('.ts') && !relativePath.endsWith('.spec.ts')
+  }
 ];
 
 const violations = [];
@@ -49,6 +54,10 @@ function walk(dirPath) {
     const relativePath = fullPath.replace(projectRoot + '\\', '').replaceAll('\\', '/');
 
     for (const check of checks) {
+      if (check.appliesTo && !check.appliesTo(relativePath)) {
+        continue;
+      }
+
       const regex = new RegExp(check.pattern.source, check.pattern.flags);
       let match;
       while ((match = regex.exec(content)) !== null) {

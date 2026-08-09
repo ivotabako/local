@@ -28,8 +28,8 @@ export class App {
   protected readonly authError = signal<string>('');
 
   protected readonly loginModel = signal({
-    username: 'apiadmin',
-    password: 'ChangeMe_OnlyForLocalDev'
+    username: '',
+    password: ''
   });
   protected readonly loginForm = form(this.loginModel, (path) => {
     required(path.username, { message: 'Username is required.' });

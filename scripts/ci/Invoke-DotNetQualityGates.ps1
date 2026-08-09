@@ -12,7 +12,11 @@ function Invoke-Checked {
         [Parameter(Mandatory)] [string]$StepName
     )
 
+    $global:LASTEXITCODE = 0
     & $Command
+    if (-not $?) {
+        throw "$StepName failed."
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "$StepName failed with exit code $LASTEXITCODE"
     }
@@ -35,27 +39,32 @@ if (-not (Test-Path $ResultsRoot)) {
     New-Item -ItemType Directory -Path $ResultsRoot | Out-Null
 }
 
-Write-Host "[1/6] Restoring solution..."
+Write-Host "[1/7] Verifying backend standards..."
+Invoke-Checked -StepName "backend standards" -Command {
+    & "c:\projects\local\scripts\ci\Invoke-BackendStandardsChecks.ps1" | Out-Host
+}
+
+Write-Host "[2/7] Restoring solution..."
 Invoke-Checked -StepName "dotnet restore" -Command {
     dotnet restore $SolutionPath | Out-Host
 }
 
-Write-Host "[2/6] Building solution with warnings as errors..."
+Write-Host "[3/7] Building solution with warnings as errors..."
 Invoke-Checked -StepName "dotnet build" -Command {
     dotnet build $SolutionPath -c $Configuration -warnaserror | Out-Host
 }
 
-Write-Host "[3/6] Running tests with coverage..."
+Write-Host "[4/7] Running tests with coverage..."
 Invoke-Checked -StepName "dotnet test" -Command {
     dotnet test $SolutionPath -c $Configuration --no-build --collect:"XPlat Code Coverage" --results-directory $ResultsRoot --logger "trx" | Out-Host
 }
 
-Write-Host "[4/6] Verifying formatting and analyzers..."
+Write-Host "[5/7] Verifying formatting and analyzers..."
 Invoke-Checked -StepName "dotnet format" -Command {
     dotnet format $SolutionPath --verify-no-changes --severity warn | Out-Host
 }
 
-Write-Host "[5/6] Checking for vulnerable NuGet packages..."
+Write-Host "[6/7] Checking for vulnerable NuGet packages..."
 $vulnOutput = dotnet list $SolutionPath package --vulnerable --include-transitive | Out-String
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet list package --vulnerable failed with exit code $LASTEXITCODE"
@@ -64,7 +73,7 @@ if ($vulnOutput -match "has the following vulnerable packages") {
     throw "Vulnerable NuGet packages detected. See output above."
 }
 
-Write-Host "[6/6] Running secret scan when gitleaks is available..."
+Write-Host "[7/7] Running secret scan when gitleaks is available..."
 if (Get-Command gitleaks -ErrorAction SilentlyContinue) {
     gitleaks detect --source c:\projects\local --no-git --verbose | Out-Host
     if ($LASTEXITCODE -ne 0) {

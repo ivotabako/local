@@ -4,7 +4,7 @@ This workspace now includes a full baseline for:
 
 - Angular 22 zoneless frontend with Optimus UI CRUD grid
 - .NET 10 minimal API (`LocalEnterprise.Api`) with JWT authorization
-- .NET 10 auth/token issuer (`LocalEnterprise.Auth`)
+- .NET 10 OpenIddict-based auth/token issuer (`LocalEnterprise.Auth`)
 - MongoDB persistence in infrastructure layer
 - Unit + integration tests (including authorization guard test)
 
@@ -14,7 +14,7 @@ This workspace now includes a full baseline for:
 - Application: `LocalEnterprise.Application` (`ICarRepository`, `CarService`)
 - Infrastructure: `LocalEnterprise.Infrastructure` (`MongoCarRepository`)
 - API host: `LocalEnterprise.Api` (secured `/api/cars` endpoints)
-- Auth host: `LocalEnterprise.Auth` (`POST /connect/token`)
+- Auth host: `LocalEnterprise.Auth` (OAuth 2.0/OpenID Connect token endpoint at `POST /connect/token`)
 
 ## Run order (development)
 
@@ -48,22 +48,23 @@ dotnet user-secrets set "MongoDb:ConnectionString" "mongodb://<user>:<password>@
 dotnet user-secrets set "MongoDb:DatabaseName" "local-enterprise-dev"
 ```
 
-### JWT alignment
+### Token server alignment
 
 Both API and Auth must share the same values:
 
 - `Jwt:Issuer` = `https://localhost:7081`
 - `Jwt:Audience` = `localenterprise.api`
-- `Jwt:SigningKey` = same secret in both projects
 
-## Default development credentials
+OpenIddict manages token signing keys inside the auth host. The API validates issued tokens using the auth server's issuer metadata.
 
-Configured in `LocalEnterprise.Auth/appsettings.Development.json`:
+### Local auth user
 
-- Username: `apiadmin`
-- Password: `ChangeMe_OnlyForLocalDev`
+Configure a local development user in user secrets for `LocalEnterprise.Auth` using a hashed password.
+See `docs/RUNBOOK.md` for the exact commands.
 
-Change these for your environment.
+## Auth note
+
+`LocalEnterprise.Auth` now uses OpenIddict for standards-based token issuance. The current frontend continues to use the OAuth password grant for local development compatibility, but the recommended long-term browser flow is authorization code + PKCE.
 
 ## Tests
 

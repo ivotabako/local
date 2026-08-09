@@ -5,7 +5,7 @@ public class UnitTest1
     [Fact]
     public void ApiAssemblyLoads()
     {
-        var assembly = typeof(Program).Assembly;
+        var assembly = typeof(LocalEnterprise.Api.Security.JwtOptions).Assembly;
         Assert.NotNull(assembly);
     }
 }

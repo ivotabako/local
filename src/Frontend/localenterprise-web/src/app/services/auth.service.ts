@@ -16,8 +16,19 @@ export class AuthService {
   readonly isAuthenticated = computed(() => !!this.tokenValue());
 
   login(username: string, password: string): Observable<TokenResponse> {
+    const body = new URLSearchParams({
+      grant_type: 'password',
+      username,
+      password,
+      scope: 'localenterprise.api'
+    });
+
     return this.http
-      .post<TokenResponse>(`${apiConfig.authBaseUrl}/connect/token`, { username, password })
+      .post<TokenResponse>(`${apiConfig.authBaseUrl}/connect/token`, body.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      })
       .pipe(
         map((result) => {
           this.tokenValue.set(result.access_token);

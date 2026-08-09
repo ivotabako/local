@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LocalEnterprise.Api\LocalEnterprise.Api.csproj" />
+    <ProjectReference Include="..\LocalEnterprise.Auth\LocalEnterprise.Auth.csproj" />
     <ProjectReference Include="..\LocalEnterprise.Infrastructure\LocalEnterprise.Infrastructure.csproj" />
   </ItemGroup>
 

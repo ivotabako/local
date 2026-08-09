@@ -1,4 +1,3 @@
-using System.Text;
 using LocalEnterprise.Api.Endpoints;
 using LocalEnterprise.Api.Security;
 using LocalEnterprise.Application;
@@ -32,24 +31,27 @@ builder.Services.AddAuthorization(options =>
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 if (string.IsNullOrWhiteSpace(jwtOptions.Issuer) ||
-    string.IsNullOrWhiteSpace(jwtOptions.Audience) ||
-    string.IsNullOrWhiteSpace(jwtOptions.SigningKey))
+    string.IsNullOrWhiteSpace(jwtOptions.Audience))
 {
-    throw new InvalidOperationException("Jwt settings are missing. Configure Jwt:Issuer, Jwt:Audience, and Jwt:SigningKey.");
+    throw new InvalidOperationException("Jwt settings are missing. Configure Jwt:Issuer and Jwt:Audience.");
 }
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.Authority = jwtOptions.Issuer;
+        options.Audience = jwtOptions.Audience;
+        options.RequireHttpsMetadata = true;
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidateIssuerSigningKey = true,
             ValidateLifetime = true,
             ValidIssuer = jwtOptions.Issuer,
             ValidAudience = jwtOptions.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
+            NameClaimType = "name",
+            RoleClaimType = "role",
             ClockSkew = TimeSpan.FromSeconds(30)
         };
     });

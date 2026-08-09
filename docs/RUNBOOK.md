@@ -97,10 +97,21 @@ Example:
 
 ```powershell
 cd src/Backend/LocalEnterprise.Api
-dotnet user-secrets init
 dotnet user-secrets set "MongoDb:ConnectionString" "mongodb://<user>:<password>@localhost:27017/admin"
 dotnet user-secrets set "MongoDb:DatabaseName" "local-enterprise-dev"
+dotnet user-secrets set "Jwt:Issuer" "https://localhost:7081"
+dotnet user-secrets set "Jwt:Audience" "localenterprise.api"
+
+cd ../LocalEnterprise.Auth
+$hash = dotnet run -- hash-password "<local dev password>"
+dotnet user-secrets set "Jwt:Issuer" "https://localhost:7081"
+dotnet user-secrets set "Jwt:Audience" "localenterprise.api"
+dotnet user-secrets set "Auth:Users:0:Username" "apiadmin"
+dotnet user-secrets set "Auth:Users:0:PasswordHash" "$hash"
+dotnet user-secrets set "Auth:Users:0:Roles:0" "Admin"
 ```
+
+`LocalEnterprise.Auth` now issues tokens through OpenIddict. The current SPA still uses the OAuth password grant for local development, while authorization code + PKCE remains the recommended long-term browser flow.
 
 ## 5) Benchmark models
 
