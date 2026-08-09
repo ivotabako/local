@@ -7,7 +7,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const token = authService.token();
 
-  if (!token || (!req.url.startsWith(apiConfig.backendBaseUrl) && !req.url.startsWith(apiConfig.authBaseUrl))) {
+  if (!token || !req.url.startsWith(apiConfig.backendBaseUrl)) {
     return next(req);
   }
 

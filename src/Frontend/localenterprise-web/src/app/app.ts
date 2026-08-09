@@ -7,6 +7,7 @@ import { TableModule } from '@openng/optimus-ui/table';
 import { finalize } from 'rxjs';
 import { Car } from './models/car';
 import { AuthService } from './services/auth.service';
+import { apiConfig } from './services/api-config';
 import { CarsService } from './services/cars.service';
 
 @Component({
@@ -26,15 +27,6 @@ export class App {
   protected readonly editingId = signal<string | null>(null);
   protected readonly statusMessage = signal<string>('');
   protected readonly authError = signal<string>('');
-
-  protected readonly loginModel = signal({
-    username: '',
-    password: ''
-  });
-  protected readonly loginForm = form(this.loginModel, (path) => {
-    required(path.username, { message: 'Username is required.' });
-    required(path.password, { message: 'Password is required.' });
-  });
 
   protected readonly carModel = signal({
     make: '',
@@ -57,30 +49,26 @@ export class App {
   protected readonly isAuthenticated = this.authService.isAuthenticated;
   protected readonly saveButtonLabel = computed(() => (this.editingId() ? 'Update Car' : 'Create Car'));
 
-  protected login(event: Event): void {
-    event.preventDefault();
+  constructor() {
+    this.tryCompleteAuthorizationCallback();
 
-    if (this.loginForm().invalid()) {
-      this.authError.set('Enter username and password.');
-      return;
+    if (this.isAuthenticated()) {
+      this.loadCars();
     }
+  }
 
-    const { username, password } = this.loginModel();
+  protected async login(event: Event): Promise<void> {
+    event.preventDefault();
     this.authError.set('');
     this.loading.set(true);
 
-    this.authService
-      .login(username, password)
-      .pipe(finalize(() => this.loading.set(false)))
-      .subscribe({
-        next: () => {
-          this.statusMessage.set('Authentication successful.');
-          this.loadCars();
-        },
-        error: () => {
-          this.authError.set('Authentication failed. Check credentials and auth server.');
-        }
-      });
+    try {
+      const authorizeUrl = await this.authService.beginAuthorizationCodeLogin(this.redirectUri());
+      window.location.assign(authorizeUrl);
+    } catch {
+      this.loading.set(false);
+      this.authError.set('Sign-in redirect failed. Verify auth server availability.');
+    }
   }
 
   protected logout(): void {
@@ -88,6 +76,7 @@ export class App {
     this.cars.set([]);
     this.resetCarForm();
     this.statusMessage.set('Signed out.');
+    window.location.assign(this.authService.buildLogoutUrl(window.location.origin));
   }
 
   protected loadCars(): void {
@@ -188,5 +177,46 @@ export class App {
       year: new Date().getFullYear(),
       vin: ''
     });
+  }
+
+  private tryCompleteAuthorizationCallback(): void {
+    const currentUrl = new URL(window.location.href);
+    const isAuthCallback = currentUrl.pathname === apiConfig.authRedirectPath;
+    const hasAuthorizationData = currentUrl.searchParams.has('code') || currentUrl.searchParams.has('error');
+    if (!isAuthCallback || !hasAuthorizationData) {
+      return;
+    }
+
+    const error = this.authService.getAuthorizationError(currentUrl.searchParams);
+    if (error) {
+      this.authError.set(`Authentication failed: ${error}`);
+      this.cleanUpAuthRedirectUrl();
+      return;
+    }
+
+    this.loading.set(true);
+    this.authService
+      .completeAuthorizationCodeLogin(currentUrl.searchParams, this.redirectUri())
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: () => {
+          this.statusMessage.set('Authentication successful.');
+          this.authError.set('');
+          this.cleanUpAuthRedirectUrl();
+          this.loadCars();
+        },
+        error: () => {
+          this.authError.set('Authentication failed during token exchange.');
+          this.cleanUpAuthRedirectUrl();
+        }
+      });
+  }
+
+  private redirectUri(): string {
+    return `${window.location.origin}${apiConfig.authRedirectPath}`;
+  }
+
+  private cleanUpAuthRedirectUrl(): void {
+    window.history.replaceState({}, '', '/');
   }
 }

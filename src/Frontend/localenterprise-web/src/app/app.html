@@ -7,16 +7,9 @@
   @if (!isAuthenticated()) {
     <section class="panel">
       <p-card header="Sign In">
+        <p>Use the authorization server login to get an access token via Authorization Code + PKCE.</p>
         <form class="form-grid" novalidate (submit)="login($event)">
-          <label>
-            Username
-            <input pInputText [formField]="loginForm.username" autocomplete="username" />
-          </label>
-          <label>
-            Password
-            <input pInputText type="password" [formField]="loginForm.password" autocomplete="current-password" />
-          </label>
-          <button pButton type="submit" [disabled]="loading() || loginForm().invalid()">Get Access Token</button>
+          <button pButton type="submit" [disabled]="loading()">Sign In</button>
         </form>
         @if (authError()) {
           <p class="error">{{ authError() }}</p>

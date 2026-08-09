@@ -46,4 +46,12 @@ describe('authInterceptor', () => {
     expect(request.request.headers.has('Authorization')).toBe(false);
     request.flush([]);
   });
+
+  it('should not attach the bearer token to auth server endpoints', () => {
+    httpClient.post('https://localhost:7081/connect/token', {}).subscribe();
+
+    const request = httpController.expectOne('https://localhost:7081/connect/token');
+    expect(request.request.headers.has('Authorization')).toBe(false);
+    request.flush({});
+  });
 });

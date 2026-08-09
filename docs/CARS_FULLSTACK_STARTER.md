@@ -64,7 +64,7 @@ See `docs/RUNBOOK.md` for the exact commands.
 
 ## Auth note
 
-`LocalEnterprise.Auth` now uses OpenIddict for standards-based token issuance. The current frontend continues to use the OAuth password grant for local development compatibility, but the recommended long-term browser flow is authorization code + PKCE.
+`LocalEnterprise.Auth` uses OpenIddict for standards-based token issuance and the frontend uses Authorization Code + PKCE for browser-safe sign-in.
 
 ## Tests
 

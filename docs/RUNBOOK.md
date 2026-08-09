@@ -111,7 +111,7 @@ dotnet user-secrets set "Auth:Users:0:PasswordHash" "$hash"
 dotnet user-secrets set "Auth:Users:0:Roles:0" "Admin"
 ```
 
-`LocalEnterprise.Auth` now issues tokens through OpenIddict. The current SPA still uses the OAuth password grant for local development, while authorization code + PKCE remains the recommended long-term browser flow.
+`LocalEnterprise.Auth` issues tokens through OpenIddict and the SPA uses Authorization Code + PKCE for local development sign-in.
 
 ## 5) Benchmark models
 

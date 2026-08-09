@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
-import { of, throwError } from 'rxjs';
+import { of } from 'rxjs';
 import { App } from './app';
 import { AuthService } from './services/auth.service';
 import { CarsService } from './services/cars.service';
@@ -8,7 +8,9 @@ import { CarsService } from './services/cars.service';
 class AuthServiceStub {
   readonly token = () => null;
   readonly isAuthenticated = () => false;
-  login = vi.fn(() => of({ access_token: 'token' }));
+  beginAuthorizationCodeLogin = vi.fn(async () => 'https://localhost:7081/connect/authorize?mock=true');
+  completeAuthorizationCodeLogin = vi.fn(() => of({ access_token: 'token' }));
+  getAuthorizationError = vi.fn(() => null);
   logout = vi.fn();
 }
 
@@ -48,31 +50,25 @@ describe('App', () => {
     expect(compiled.querySelector('h1')?.textContent).toContain('LocalEnterprise Cars Platform');
   });
 
-  it('should not prefill login credentials', async () => {
+  it('should render sign-in action', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const inputs = compiled.querySelectorAll('input');
-
-    expect(inputs[0]?.getAttribute('value') ?? '').toBe('');
-    expect(inputs[1]?.getAttribute('value') ?? '').toBe('');
+    expect(compiled.textContent).toContain('Authorization Code + PKCE');
   });
 
-  it('should show an error when authentication fails', async () => {
-    authService.login.mockReturnValueOnce(throwError(() => new Error('nope')));
+  it('should show an error when sign-in redirect initialization fails', async () => {
+    authService.beginAuthorizationCodeLogin.mockRejectedValueOnce(new Error('nope'));
 
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;
-    app['loginForm'].username().value.set('apiadmin');
-    app['loginForm'].password().value.set('bad-password');
 
-    fixture.detectChanges();
-    app['login'](new Event('submit'));
+    await app['login'](new Event('submit'));
     await fixture.whenStable();
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.error')?.textContent).toContain('Authentication failed.');
+    expect(compiled.querySelector('.error')?.textContent).toContain('Sign-in redirect failed.');
   });
 });
