@@ -2,6 +2,16 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.3.
 
+## Project standards
+
+This frontend follows strict Angular 22 standards:
+
+- Signal-based component state
+- Signal Forms (`@angular/forms/signals`) for form modeling and validation
+- Zoneless change detection
+
+See [docs/ANGULAR22_FRONTEND_STANDARDS.md](../../../docs/ANGULAR22_FRONTEND_STANDARDS.md) for the full policy.
+
 ## Development server
 
 To start a local development server, run:
@@ -42,6 +52,15 @@ To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use th
 
 ```bash
 ng test
+```
+
+## Quality checks
+
+Run standards and quality checks before merging frontend changes:
+
+```bash
+npm run quality:standards
+npm run quality:all
 ```
 
 ## Running end-to-end tests

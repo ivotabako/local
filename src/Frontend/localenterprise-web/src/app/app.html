@@ -7,21 +7,16 @@
   @if (!isAuthenticated()) {
     <section class="panel">
       <p-card header="Sign In">
-        <form class="form-grid" [formGroup]="loginForm" (ngSubmit)="login()">
+        <form class="form-grid" novalidate (submit)="login($event)">
           <label>
             Username
-            <input pInputText formControlName="username" autocomplete="username" />
+            <input pInputText [formField]="loginForm.username" autocomplete="username" />
           </label>
           <label>
             Password
-            <p-password
-              formControlName="password"
-              [feedback]="false"
-              [toggleMask]="true"
-              autocomplete="current-password"
-            />
+            <input pInputText type="password" [formField]="loginForm.password" autocomplete="current-password" />
           </label>
-          <button pButton type="submit" [disabled]="loading()">Get Access Token</button>
+          <button pButton type="submit" [disabled]="loading() || loginForm().invalid()">Get Access Token</button>
         </form>
         @if (authError()) {
           <p class="error">{{ authError() }}</p>
@@ -36,25 +31,25 @@
           <button pButton type="button" severity="secondary" label="Sign Out" icon="pi pi-sign-out" (click)="logout()"></button>
         </div>
 
-        <form class="form-grid car-form" [formGroup]="carForm" (ngSubmit)="saveCar()">
+        <form class="form-grid car-form" novalidate (submit)="saveCar($event)">
           <label>
             Make
-            <input pInputText formControlName="make" />
+            <input pInputText [formField]="carForm.make" />
           </label>
           <label>
             Model
-            <input pInputText formControlName="model" />
+            <input pInputText [formField]="carForm.model" />
           </label>
           <label>
             Year
-            <input pInputText type="number" formControlName="year" />
+            <input pInputText type="number" [formField]="carForm.year" />
           </label>
           <label>
             VIN
-            <input pInputText formControlName="vin" />
+            <input pInputText [formField]="carForm.vin" />
           </label>
           <div class="button-row">
-            <button pButton type="submit" [disabled]="saving()">{{ saveButtonLabel() }}</button>
+            <button pButton type="submit" [disabled]="saving() || carForm().invalid()">{{ saveButtonLabel() }}</button>
             <button pButton type="button" severity="secondary" (click)="resetCarForm()">Reset</button>
           </div>
         </form>
