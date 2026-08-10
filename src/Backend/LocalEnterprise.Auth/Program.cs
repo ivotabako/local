@@ -12,12 +12,29 @@ using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Validation.AspNetCore;
+using Serilog;
+using Serilog.Events;
 
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 const string PendingSecondFactorClaim = "localenterprise.pending_2fa";
 
 var builder = WebApplication.CreateBuilder(args);
+
+var authLogDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
+Directory.CreateDirectory(authLogDirectory);
+
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        path: Path.Combine(authLogDirectory, "auth-.log"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 14,
+        shared: true,
+        restrictedToMinimumLevel: LogEventLevel.Information));
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);

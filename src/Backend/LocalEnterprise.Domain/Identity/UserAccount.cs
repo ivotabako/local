@@ -14,6 +14,7 @@ public sealed class UserAccount : Entity, IAggregateRoot
     public DateTime? LastPasswordChangedAt { get; private set; }
     public bool IsLocked { get; private set; }
     public DateTime? LockedAt { get; private set; }
+    public int FailedSignInAttempts { get; private set; }
     public string? TwoFactorSharedSecret { get; private set; }
     public bool TwoFactorEnabled { get; private set; }
     public IReadOnlyList<string> RecoveryCodeHashes { get; private set; } = [];
@@ -44,6 +45,7 @@ public sealed class UserAccount : Entity, IAggregateRoot
         DateTime? lastPasswordChangedAt,
         bool isLocked,
         DateTime? lockedAt,
+        int failedSignInAttempts,
         string? twoFactorSharedSecret,
         bool twoFactorEnabled,
         IEnumerable<string>? recoveryCodeHashes)
@@ -58,6 +60,7 @@ public sealed class UserAccount : Entity, IAggregateRoot
             LastPasswordChangedAt = lastPasswordChangedAt,
             IsLocked = isLocked,
             LockedAt = lockedAt,
+            FailedSignInAttempts = Math.Max(0, failedSignInAttempts),
             TwoFactorSharedSecret = NormalizeOptional(twoFactorSharedSecret),
             TwoFactorEnabled = twoFactorEnabled,
             RecoveryCodeHashes = recoveryCodeHashes?.ToArray() ?? []
@@ -105,6 +108,21 @@ public sealed class UserAccount : Entity, IAggregateRoot
     {
         IsLocked = false;
         LockedAt = null;
+        FailedSignInAttempts = 0;
+    }
+
+    public void RegisterFailedSignInAttempt(int maxFailedAttempts, DateTime attemptedAtUtc)
+    {
+        FailedSignInAttempts++;
+        if (FailedSignInAttempts >= Math.Max(1, maxFailedAttempts))
+        {
+            Lock(attemptedAtUtc);
+        }
+    }
+
+    public void ResetFailedSignInAttempts()
+    {
+        FailedSignInAttempts = 0;
     }
 
     public void SetTwoFactorSharedSecret(string sharedSecret)

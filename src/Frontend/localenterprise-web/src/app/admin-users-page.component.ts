@@ -80,6 +80,7 @@ import { UserAccountsService } from './services/user-accounts.service';
                   <td>
                     <div class="row-actions">
                       <button pButton type="button" severity="secondary" size="small" (click)="startResetPassword(user)">Reset Password</button>
+                      <button pButton type="button" severity="secondary" size="small" (click)="resetTwoFactor(user)" [disabled]="!user.twoFactorEnabled">Reset 2FA</button>
                       <button pButton type="button" severity="secondary" size="small" (click)="toggleLock(user)">{{ user.isLocked ? 'Unlock' : 'Lock' }}</button>
                       <button pButton type="button" severity="danger" size="small" (click)="deleteUser(user)">Delete</button>
                     </div>
@@ -292,6 +293,24 @@ export class AdminUsersPageComponent {
       },
       error: (error) => {
         const message = error?.error?.error ?? 'Unable to update lock state.';
+        this.errorMessage.set(message);
+        this.notifications.error(message);
+      }
+    });
+  }
+
+  protected resetTwoFactor(user: UserAccount): void {
+    if (!window.confirm(`Reset two-factor authentication for ${user.username}?`)) {
+      return;
+    }
+
+    this.userAccountsService.resetTwoFactor(user.id).subscribe({
+      next: (updated) => {
+        this.users.update((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+        this.notifications.success(`Two-factor reset for ${updated.username}.`);
+      },
+      error: (error) => {
+        const message = error?.error?.error ?? 'Unable to reset two-factor authentication.';
         this.errorMessage.set(message);
         this.notifications.error(message);
       }

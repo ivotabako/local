@@ -6,6 +6,7 @@ import { ButtonModule } from '@openng/optimus-ui/button';
 import { CardModule } from '@openng/optimus-ui/card';
 import { InputTextModule } from '@openng/optimus-ui/inputtext';
 import { finalize } from 'rxjs';
+import QRCode from 'qrcode';
 import { AuthService } from './services/auth.service';
 import { NotificationsService } from './services/notifications.service';
 import { TwoFactorEnrollment, TwoFactorVerificationResult } from './models/user-account';
@@ -38,13 +39,19 @@ import { TwoFactorEnrollment, TwoFactorVerificationResult } from './models/user-
             <a routerLink="/account/password"><button pButton type="button">Change Password</button></a>
             @if (!user.twoFactorEnabled) {
               <button pButton type="button" severity="secondary" [disabled]="setupLoading()" (click)="beginEnrollment()">Start 2FA Setup</button>
+            } @else {
+              <button pButton type="button" severity="secondary" [disabled]="manageLoading()" (click)="regenerateRecoveryCodes()">Regenerate Recovery Codes</button>
+              <button pButton type="button" severity="danger" [disabled]="manageLoading()" (click)="disableTwoFactor()">Disable 2FA</button>
             }
           </div>
 
           @if (enrollment()) {
             <section class="two-factor-card">
               <h3>Two-Factor Setup</h3>
-              <p>Scan the provisioning URI with your authenticator app or use the shared secret below.</p>
+              <p>Scan this QR code in your authenticator app, then verify with a code to finish setup.</p>
+              @if (qrCodeDataUrl()) {
+                <img class="qr-preview" [src]="qrCodeDataUrl()!" alt="Authenticator setup QR code" />
+              }
               <p class="mono">{{ enrollment()!.sharedSecret }}</p>
               <p class="uri">{{ enrollment()!.provisioningUri }}</p>
 
@@ -54,6 +61,19 @@ import { TwoFactorEnrollment, TwoFactorVerificationResult } from './models/user-
                   <input pInputText [formField]="verificationForm.code" />
                 </label>
                 <button pButton type="submit" [disabled]="verificationLoading() || verificationForm().invalid()">Enable 2FA</button>
+              </form>
+            </section>
+          }
+
+          @if (user.twoFactorEnabled) {
+            <section class="two-factor-card">
+              <h3>Manage Two-Factor</h3>
+              <p>Enter a current authenticator or recovery code to regenerate recovery codes or disable two-factor.</p>
+              <form class="verify-form" novalidate>
+                <label>
+                  Verification Code
+                  <input pInputText [formField]="manageForm.code" />
+                </label>
               </form>
             </section>
           }
@@ -87,6 +107,7 @@ import { TwoFactorEnrollment, TwoFactorVerificationResult } from './models/user-
       .two-factor-card, .recovery-list { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d8e4e1; }
       .verify-form { display: grid; gap: 0.75rem; margin-top: 0.75rem; }
       .verify-form label { display: grid; gap: 0.45rem; font-weight: 600; color: #1b4249; }
+      .qr-preview { width: 12rem; height: 12rem; display: block; margin: 0.5rem 0 0.75rem; border: 1px solid #d8e4e1; border-radius: 0.5rem; }
       .mono { font-family: Consolas, 'Courier New', monospace; word-break: break-all; }
       .uri { color: #34575d; word-break: break-all; }
     `
@@ -98,11 +119,17 @@ export class AccountPageComponent {
 
   protected readonly setupLoading = signal(false);
   protected readonly verificationLoading = signal(false);
+  protected readonly manageLoading = signal(false);
   protected readonly enrollment = signal<TwoFactorEnrollment | null>(null);
+  protected readonly qrCodeDataUrl = signal<string | null>(null);
   protected readonly recoveryCodes = signal<string[]>([]);
 
   private readonly verificationModel = signal({ code: '' });
+  private readonly manageModel = signal({ code: '' });
   protected readonly verificationForm = form(this.verificationModel, (path) => {
+    required(path.code, { message: 'Verification code is required.' });
+  });
+  protected readonly manageForm = form(this.manageModel, (path) => {
     required(path.code, { message: 'Verification code is required.' });
   });
 
@@ -114,6 +141,7 @@ export class AccountPageComponent {
       .subscribe({
         next: (enrollment) => {
           this.enrollment.set(enrollment);
+          this.renderQrCode(enrollment.provisioningUri);
           this.recoveryCodes.set([]);
           this.notifications.info('Two-factor setup started. Verify the authenticator code to finish enabling it.');
         },
@@ -138,12 +166,70 @@ export class AccountPageComponent {
         next: (result: TwoFactorVerificationResult) => {
           this.recoveryCodes.set(result.recoveryCodes);
           this.enrollment.set(null);
+          this.qrCodeDataUrl.set(null);
           this.verificationModel.set({ code: '' });
           this.notifications.success('Two-factor authentication is now enabled. Save the recovery codes securely.');
         },
         error: (error) => {
           this.notifications.error(error?.error?.error ?? 'Unable to verify the two-factor code.');
         }
+      });
+  }
+
+  protected regenerateRecoveryCodes(): void {
+    if (this.manageForm().invalid()) {
+      this.notifications.error('Enter a verification code to regenerate recovery codes.');
+      return;
+    }
+
+    this.manageLoading.set(true);
+    this.authService
+      .regenerateRecoveryCodes(this.manageModel().code)
+      .pipe(finalize(() => this.manageLoading.set(false)))
+      .subscribe({
+        next: (result: TwoFactorVerificationResult) => {
+          this.recoveryCodes.set(result.recoveryCodes);
+          this.manageModel.set({ code: '' });
+          this.notifications.success('Recovery codes regenerated. Save the new codes securely.');
+        },
+        error: (error) => {
+          this.notifications.error(error?.error?.error ?? 'Unable to regenerate recovery codes.');
+        }
+      });
+  }
+
+  protected disableTwoFactor(): void {
+    if (this.manageForm().invalid()) {
+      this.notifications.error('Enter a verification code to disable two-factor authentication.');
+      return;
+    }
+
+    this.manageLoading.set(true);
+    this.authService
+      .disableTwoFactor(this.manageModel().code)
+      .pipe(finalize(() => this.manageLoading.set(false)))
+      .subscribe({
+        next: () => {
+          this.enrollment.set(null);
+          this.qrCodeDataUrl.set(null);
+          this.recoveryCodes.set([]);
+          this.manageModel.set({ code: '' });
+          this.notifications.success('Two-factor authentication disabled.');
+        },
+        error: (error) => {
+          this.notifications.error(error?.error?.error ?? 'Unable to disable two-factor authentication.');
+        }
+      });
+  }
+
+  private renderQrCode(provisioningUri: string): void {
+    QRCode.toDataURL(provisioningUri, { errorCorrectionLevel: 'M', margin: 1, width: 240 })
+      .then((dataUrl: string) => {
+        this.qrCodeDataUrl.set(dataUrl);
+      })
+      .catch(() => {
+        this.qrCodeDataUrl.set(null);
+        this.notifications.error('Unable to render the QR code. Use the shared secret manually.');
       });
   }
 }

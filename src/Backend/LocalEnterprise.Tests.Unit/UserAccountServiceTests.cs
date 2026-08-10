@@ -182,6 +182,102 @@ public class UserAccountServiceTests
         Assert.Equal(8, enabled.User.RecoveryCodesRemaining);
     }
 
+    [Fact]
+    public async Task AuthenticateAsync_LocksUser_AfterFiveFailedAttempts()
+    {
+        var repository = new InMemoryUserAccountRepository();
+        var passwordHashService = new FakePasswordHashService();
+        var service = new UserAccountService(repository, passwordHashService, new FakeMfaService());
+
+        var created = await service.CreateAsync(
+            new CreateUserAccountRequest("alice", "Password_1234!", [AuthRoles.Reader]),
+            "seed",
+            CancellationToken.None);
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            var result = await service.AuthenticateAsync("alice", "WrongPassword_1234!", CancellationToken.None);
+            Assert.Null(result);
+        }
+
+        var lockedUser = await service.GetByIdAsync(created.User!.Id, CancellationToken.None);
+        Assert.NotNull(lockedUser);
+        Assert.True(lockedUser!.IsLocked);
+    }
+
+    [Fact]
+    public async Task RegenerateRecoveryCodesAsync_ReplacesExistingCodes()
+    {
+        var repository = new InMemoryUserAccountRepository();
+        var passwordHashService = new FakePasswordHashService();
+        var mfaService = new FakeMfaService();
+        var service = new UserAccountService(repository, passwordHashService, mfaService);
+
+        var created = await service.CreateAsync(
+            new CreateUserAccountRequest("alice", "Password_1234!", [AuthRoles.Reader]),
+            "seed",
+            CancellationToken.None);
+
+        await service.BeginTwoFactorEnrollmentAsync(created.User!.Id, "LocalEnterprise", CancellationToken.None);
+        var enabled = await service.EnableTwoFactorAsync(created.User.Id, "123456", CancellationToken.None);
+        Assert.True(enabled.Succeeded);
+
+        var regenerated = await service.RegenerateRecoveryCodesAsync(created.User.Id, "123456", CancellationToken.None);
+
+        Assert.True(regenerated.Succeeded);
+        Assert.Equal(8, regenerated.RecoveryCodes.Length);
+        Assert.Equal(8, regenerated.User!.RecoveryCodesRemaining);
+        Assert.NotEqual(enabled.RecoveryCodes[0], regenerated.RecoveryCodes[0]);
+    }
+
+    [Fact]
+    public async Task DisableTwoFactorAsync_ClearsTwoFactorState()
+    {
+        var repository = new InMemoryUserAccountRepository();
+        var passwordHashService = new FakePasswordHashService();
+        var mfaService = new FakeMfaService();
+        var service = new UserAccountService(repository, passwordHashService, mfaService);
+
+        var created = await service.CreateAsync(
+            new CreateUserAccountRequest("alice", "Password_1234!", [AuthRoles.Reader]),
+            "seed",
+            CancellationToken.None);
+
+        await service.BeginTwoFactorEnrollmentAsync(created.User!.Id, "LocalEnterprise", CancellationToken.None);
+        var enabled = await service.EnableTwoFactorAsync(created.User.Id, "123456", CancellationToken.None);
+        Assert.True(enabled.Succeeded);
+
+        var disabled = await service.DisableTwoFactorAsync(created.User.Id, "123456", CancellationToken.None);
+
+        Assert.True(disabled.Succeeded);
+        Assert.False(disabled.User!.TwoFactorEnabled);
+        Assert.Equal(0, disabled.User.RecoveryCodesRemaining);
+    }
+
+    [Fact]
+    public async Task ResetTwoFactorAsync_ClearsAdminManagedTwoFactorState()
+    {
+        var repository = new InMemoryUserAccountRepository();
+        var passwordHashService = new FakePasswordHashService();
+        var mfaService = new FakeMfaService();
+        var service = new UserAccountService(repository, passwordHashService, mfaService);
+
+        var created = await service.CreateAsync(
+            new CreateUserAccountRequest("alice", "Password_1234!", [AuthRoles.Reader]),
+            "seed",
+            CancellationToken.None);
+
+        await service.BeginTwoFactorEnrollmentAsync(created.User!.Id, "LocalEnterprise", CancellationToken.None);
+        var enabled = await service.EnableTwoFactorAsync(created.User.Id, "123456", CancellationToken.None);
+        Assert.True(enabled.Succeeded);
+
+        var reset = await service.ResetTwoFactorAsync(created.User.Id, CancellationToken.None);
+
+        Assert.True(reset.Succeeded);
+        Assert.False(reset.User!.TwoFactorEnabled);
+        Assert.Equal(0, reset.User.RecoveryCodesRemaining);
+    }
+
     private sealed class InMemoryUserAccountRepository : IUserAccountRepository
     {
         private readonly List<UserAccount> _users = [];
@@ -253,6 +349,7 @@ public class UserAccountServiceTests
     private sealed class FakeMfaService : IMfaService
     {
         private int _secretCounter;
+        private int _recoveryBatch;
 
         public string GenerateSharedSecret()
         {
@@ -272,7 +369,8 @@ public class UserAccountServiceTests
 
         public string[] GenerateRecoveryCodes(int count)
         {
-            return Enumerable.Range(1, count).Select(index => $"code-{index:0000}").ToArray();
+            _recoveryBatch++;
+            return Enumerable.Range(1, count).Select(index => $"batch{_recoveryBatch}-code-{index:0000}").ToArray();
         }
     }
 }

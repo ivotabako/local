@@ -464,6 +464,132 @@ public class TokenEndpointTests : IClassFixture<WebApplicationFactory<AuthAssemb
         var twoFactorResponse = await loginClient.SendAsync(twoFactorRequest);
         Assert.Equal(HttpStatusCode.Redirect, twoFactorResponse.StatusCode);
         Assert.NotNull(twoFactorResponse.Headers.Location);
+
+        var regenerateRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/me/2fa/recovery-codes/regenerate")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", userToken) },
+            Content = JsonContent.Create(new
+            {
+                code = verifyPayload.RecoveryCodes[1]
+            })
+        };
+
+        var regenerateResponse = await adminClient.SendAsync(regenerateRequest);
+        regenerateResponse.EnsureSuccessStatusCode();
+        var regeneratePayload = await regenerateResponse.Content.ReadFromJsonAsync<TwoFactorVerificationPayload>();
+        Assert.NotNull(regeneratePayload);
+        Assert.Equal(8, regeneratePayload!.RecoveryCodes.Length);
+
+        var disableRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/me/2fa/disable")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", userToken) },
+            Content = JsonContent.Create(new
+            {
+                code = regeneratePayload.RecoveryCodes[0]
+            })
+        };
+
+        var disableResponse = await adminClient.SendAsync(disableRequest);
+        disableResponse.EnsureSuccessStatusCode();
+        var disabledPayload = await disableResponse.Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(disabledPayload);
+        Assert.False(disabledPayload!.TwoFactorEnabled);
+
+        var reenrollRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/me/2fa/enrollment");
+        reenrollRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userToken);
+        var reenrollResponse = await adminClient.SendAsync(reenrollRequest);
+        reenrollResponse.EnsureSuccessStatusCode();
+        var reenrollmentPayload = await reenrollResponse.Content.ReadFromJsonAsync<TwoFactorEnrollmentPayload>();
+        Assert.NotNull(reenrollmentPayload);
+        var secondTotpCode = new Totp(Base32Encoding.ToBytes(reenrollmentPayload!.SharedSecret)).ComputeTotp();
+
+        var secondVerifyRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/me/2fa/verify")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", userToken) },
+            Content = JsonContent.Create(new
+            {
+                code = secondTotpCode
+            })
+        };
+
+        var secondVerifyResponse = await adminClient.SendAsync(secondVerifyRequest);
+        secondVerifyResponse.EnsureSuccessStatusCode();
+
+        var adminResetTwoFactorRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/users/{created.Id}/reset-2fa");
+        adminResetTwoFactorRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var adminResetTwoFactorResponse = await adminClient.SendAsync(adminResetTwoFactorRequest);
+        adminResetTwoFactorResponse.EnsureSuccessStatusCode();
+        var adminResetTwoFactorPayload = await adminResetTwoFactorResponse.Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(adminResetTwoFactorPayload);
+        Assert.False(adminResetTwoFactorPayload!.TwoFactorEnabled);
+
+        using var noChallengeClient = CreateSecureClient(allowAutoRedirect: false, handleCookies: true);
+        var noChallengeAuthorizeResponse = await noChallengeClient.GetAsync(authorizePath);
+        var noChallengeReturnUrl = ExtractQueryParameter(noChallengeAuthorizeResponse.Headers.Location!, "returnUrl");
+        using var noChallengeLoginRequest = new HttpRequestMessage(HttpMethod.Post, "/account/login")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["username"] = "mfa.user",
+                ["password"] = "ChangedPassword_9012!",
+                ["returnUrl"] = noChallengeReturnUrl
+            })
+        };
+
+        var noChallengeLoginResponse = await noChallengeClient.SendAsync(noChallengeLoginRequest);
+        Assert.Equal(HttpStatusCode.Redirect, noChallengeLoginResponse.StatusCode);
+        Assert.DoesNotContain("/account/login-2fa", noChallengeLoginResponse.Headers.Location!.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RepeatedFailedLogins_AutomaticallyLockUser()
+    {
+        using var adminClient = CreateSecureClient();
+        var adminToken = await AuthorizeInteractiveLoginAndGetTokenAsync();
+
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", adminToken) },
+            Content = JsonContent.Create(new
+            {
+                username = "autolock.user",
+                password = "AutoLockPassword_1234!",
+                roles = new[] { "Reader" }
+            })
+        };
+
+        var created = await (await adminClient.SendAsync(createRequest)).Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(created);
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            using var loginClient = CreateSecureClient(allowAutoRedirect: false, handleCookies: true);
+            var authorizePath =
+                $"/connect/authorize?client_id=localenterprise-web&response_type=code&redirect_uri={Uri.EscapeDataString("https://localhost:4200/auth/callback")}&scope=localenterprise.api&state=autolock-state-{attempt}&code_challenge=autolock-verifier&code_challenge_method=plain";
+            var authorizeResponse = await loginClient.GetAsync(authorizePath);
+            var returnUrl = ExtractQueryParameter(authorizeResponse.Headers.Location!, "returnUrl");
+
+            using var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/account/login")
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["username"] = "autolock.user",
+                    ["password"] = "WrongPassword_1234!",
+                    ["returnUrl"] = returnUrl
+                })
+            };
+
+            var loginResponse = await loginClient.SendAsync(loginRequest);
+            Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
+        }
+
+        using var getRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/users/{created!.Id}");
+        getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var getResponse = await adminClient.SendAsync(getRequest);
+        getResponse.EnsureSuccessStatusCode();
+        var payload = await getResponse.Content.ReadFromJsonAsync<UserPayload>();
+        Assert.NotNull(payload);
+        Assert.True(payload!.IsLocked);
     }
 
     private static HttpRequestMessage CreatePasswordGrantRequest(string password)

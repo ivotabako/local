@@ -34,6 +34,17 @@ public interface IUserAccountService
         Guid id,
         string code,
         CancellationToken cancellationToken);
+    Task<(bool Succeeded, string? ErrorCode, string? Error, UserAccountDto? User, string[] RecoveryCodes)> RegenerateRecoveryCodesAsync(
+        Guid id,
+        string code,
+        CancellationToken cancellationToken);
+    Task<(bool Succeeded, string? ErrorCode, string? Error, UserAccountDto? User)> DisableTwoFactorAsync(
+        Guid id,
+        string code,
+        CancellationToken cancellationToken);
+    Task<(bool Succeeded, string? ErrorCode, string? Error, UserAccountDto? User)> ResetTwoFactorAsync(
+        Guid id,
+        CancellationToken cancellationToken);
     Task<PendingSecondFactorResult> CompleteTwoFactorSignInAsync(
         Guid id,
         string code,

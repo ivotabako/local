@@ -142,6 +142,63 @@ public static class UserAccountEndpoints
             return Results.Ok(new TwoFactorVerificationResultDto(result.User, result.RecoveryCodes));
         }).RequireAuthorization("AuthApiScope");
 
+        group.MapPost("/me/2fa/recovery-codes/regenerate", async (ClaimsPrincipal principal, VerifyTwoFactorCodeRequest request, IUserAccountService service, CancellationToken cancellationToken) =>
+        {
+            var subject = principal.FindFirstValue(OpenIddictConstants.Claims.Subject);
+            if (!Guid.TryParse(subject, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            var result = await service.RegenerateRecoveryCodesAsync(userId, request.Code, cancellationToken);
+            if (!result.Succeeded || result.User is null)
+            {
+                return result.ErrorCode switch
+                {
+                    UserAccountErrors.UserNotFound => Results.NotFound(),
+                    _ => Results.BadRequest(new { error = result.Error })
+                };
+            }
+
+            return Results.Ok(new TwoFactorVerificationResultDto(result.User, result.RecoveryCodes));
+        }).RequireAuthorization("AuthApiScope");
+
+        group.MapPost("/me/2fa/disable", async (ClaimsPrincipal principal, VerifyTwoFactorCodeRequest request, IUserAccountService service, CancellationToken cancellationToken) =>
+        {
+            var subject = principal.FindFirstValue(OpenIddictConstants.Claims.Subject);
+            if (!Guid.TryParse(subject, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            var result = await service.DisableTwoFactorAsync(userId, request.Code, cancellationToken);
+            if (!result.Succeeded)
+            {
+                return result.ErrorCode switch
+                {
+                    UserAccountErrors.UserNotFound => Results.NotFound(),
+                    _ => Results.BadRequest(new { error = result.Error })
+                };
+            }
+
+            return Results.Ok(result.User);
+        }).RequireAuthorization("AuthApiScope");
+
+        group.MapPost("/{id:guid}/reset-2fa", async (Guid id, IUserAccountService service, CancellationToken cancellationToken) =>
+        {
+            var result = await service.ResetTwoFactorAsync(id, cancellationToken);
+            if (!result.Succeeded)
+            {
+                return result.ErrorCode switch
+                {
+                    UserAccountErrors.UserNotFound => Results.NotFound(),
+                    _ => Results.BadRequest(new { error = result.Error })
+                };
+            }
+
+            return Results.Ok(result.User);
+        }).RequireAuthorization("AuthAdmin");
+
         group.MapPut("/{id:guid}", async (Guid id, UpdateUserAccountRequest request, IUserAccountService service, CancellationToken cancellationToken) =>
         {
             var result = await service.UpdateAsync(id, request, cancellationToken);

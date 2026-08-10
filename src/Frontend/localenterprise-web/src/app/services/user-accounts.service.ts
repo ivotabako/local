@@ -33,6 +33,10 @@ export class UserAccountsService {
     return this.http.post<UserAccount>(`${this.baseUrl}/${id}/unlock`, {});
   }
 
+  resetTwoFactor(id: string): Observable<UserAccount> {
+    return this.http.post<UserAccount>(`${this.baseUrl}/${id}/reset-2fa`, {});
+  }
+
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }

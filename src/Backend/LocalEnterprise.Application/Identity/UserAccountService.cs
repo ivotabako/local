@@ -6,6 +6,8 @@ namespace LocalEnterprise.Application.Identity;
 
 public sealed class UserAccountService : IUserAccountService
 {
+    private const int MaxFailedSignInAttempts = 5;
+
     private readonly IUserAccountRepository _repository;
     private readonly IPasswordHashService _passwordHashService;
     private readonly IMfaService _mfaService;
@@ -59,7 +61,20 @@ public sealed class UserAccountService : IUserAccountService
         }
 
         var verified = _passwordHashService.VerifyHashedPassword(user.Username, user.PasswordHash, password);
-        return verified ? Map(user) : null;
+        if (!verified)
+        {
+            user.RegisterFailedSignInAttempt(MaxFailedSignInAttempts, DateTime.UtcNow);
+            await _repository.UpdateAsync(user, cancellationToken);
+            return null;
+        }
+
+        if (user.FailedSignInAttempts > 0)
+        {
+            user.ResetFailedSignInAttempts();
+            await _repository.UpdateAsync(user, cancellationToken);
+        }
+
+        return Map(user);
     }
 
     public async Task<(bool Succeeded, string? ErrorCode, string? Error, UserAccountDto? User)> CreateAsync(
@@ -252,6 +267,81 @@ public sealed class UserAccountService : IUserAccountService
             : (false, UserAccountErrors.UserNotFound, "User not found.", null, []);
     }
 
+    public async Task<(bool Succeeded, string? ErrorCode, string? Error, UserAccountDto? User, string[] RecoveryCodes)> RegenerateRecoveryCodesAsync(
+        Guid id,
+        string code,
+        CancellationToken cancellationToken)
+    {
+        var user = await _repository.GetByIdAsync(id, cancellationToken);
+        if (user is null)
+        {
+            return (false, UserAccountErrors.UserNotFound, "User not found.", null, []);
+        }
+
+        if (!user.TwoFactorEnabled || string.IsNullOrWhiteSpace(user.TwoFactorSharedSecret))
+        {
+            return (false, UserAccountErrors.TwoFactorNotConfigured, "Two-factor authentication is not enabled.", null, []);
+        }
+
+        if (!TryValidateTwoFactorOrRecoveryCode(user, code, consumeRecoveryCode: true))
+        {
+            return (false, UserAccountErrors.InvalidTwoFactorCode, "The verification code is invalid.", null, []);
+        }
+
+        var recoveryCodes = _mfaService.GenerateRecoveryCodes(8);
+        user.ReplaceRecoveryCodes(recoveryCodes.Select(recoveryCode => _passwordHashService.HashPassword($"{user.Username}:recovery", recoveryCode)));
+
+        var updated = await _repository.UpdateAsync(user, cancellationToken);
+        return updated
+            ? (true, null, null, Map(user), recoveryCodes)
+            : (false, UserAccountErrors.UserNotFound, "User not found.", null, []);
+    }
+
+    public async Task<(bool Succeeded, string? ErrorCode, string? Error, UserAccountDto? User)> DisableTwoFactorAsync(
+        Guid id,
+        string code,
+        CancellationToken cancellationToken)
+    {
+        var user = await _repository.GetByIdAsync(id, cancellationToken);
+        if (user is null)
+        {
+            return (false, UserAccountErrors.UserNotFound, "User not found.", null);
+        }
+
+        if (!user.TwoFactorEnabled || string.IsNullOrWhiteSpace(user.TwoFactorSharedSecret))
+        {
+            return (false, UserAccountErrors.TwoFactorNotConfigured, "Two-factor authentication is not enabled.", null);
+        }
+
+        if (!TryValidateTwoFactorOrRecoveryCode(user, code, consumeRecoveryCode: true))
+        {
+            return (false, UserAccountErrors.InvalidTwoFactorCode, "The verification code is invalid.", null);
+        }
+
+        user.DisableTwoFactor();
+        var updated = await _repository.UpdateAsync(user, cancellationToken);
+        return updated
+            ? (true, null, null, Map(user))
+            : (false, UserAccountErrors.UserNotFound, "User not found.", null);
+    }
+
+    public async Task<(bool Succeeded, string? ErrorCode, string? Error, UserAccountDto? User)> ResetTwoFactorAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var user = await _repository.GetByIdAsync(id, cancellationToken);
+        if (user is null)
+        {
+            return (false, UserAccountErrors.UserNotFound, "User not found.", null);
+        }
+
+        user.DisableTwoFactor();
+        var updated = await _repository.UpdateAsync(user, cancellationToken);
+        return updated
+            ? (true, null, null, Map(user))
+            : (false, UserAccountErrors.UserNotFound, "User not found.", null);
+    }
+
     public async Task<PendingSecondFactorResult> CompleteTwoFactorSignInAsync(
         Guid id,
         string code,
@@ -268,22 +358,11 @@ public sealed class UserAccountService : IUserAccountService
             return new PendingSecondFactorResult(false, UserAccountErrors.TwoFactorNotConfigured, "Two-factor authentication is not enabled.", null);
         }
 
-        if (_mfaService.ValidateCode(user.TwoFactorSharedSecret, code))
-        {
-            return new PendingSecondFactorResult(true, null, null, Map(user));
-        }
-
-        var remainingRecoveryCodes = user.RecoveryCodeHashes.ToList();
-        var matchedIndex = remainingRecoveryCodes.FindIndex(hash =>
-            _passwordHashService.VerifyHashedPassword($"{user.Username}:recovery", hash, code));
-
-        if (matchedIndex < 0)
+        if (!TryValidateTwoFactorOrRecoveryCode(user, code, consumeRecoveryCode: true))
         {
             return new PendingSecondFactorResult(false, UserAccountErrors.InvalidTwoFactorCode, "The verification code is invalid.", null);
         }
 
-        remainingRecoveryCodes.RemoveAt(matchedIndex);
-        user.ReplaceRecoveryCodes(remainingRecoveryCodes);
         await _repository.UpdateAsync(user, cancellationToken);
         return new PendingSecondFactorResult(true, null, null, Map(user));
     }
@@ -417,5 +496,34 @@ public sealed class UserAccountService : IUserAccountService
         }
 
         return null;
+    }
+
+    private bool TryValidateTwoFactorOrRecoveryCode(UserAccount user, string code, bool consumeRecoveryCode)
+    {
+        if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(user.TwoFactorSharedSecret))
+        {
+            return false;
+        }
+
+        if (_mfaService.ValidateCode(user.TwoFactorSharedSecret, code))
+        {
+            return true;
+        }
+
+        var remainingRecoveryCodes = user.RecoveryCodeHashes.ToList();
+        var matchedIndex = remainingRecoveryCodes.FindIndex(hash =>
+            _passwordHashService.VerifyHashedPassword($"{user.Username}:recovery", hash, code));
+        if (matchedIndex < 0)
+        {
+            return false;
+        }
+
+        if (consumeRecoveryCode)
+        {
+            remainingRecoveryCodes.RemoveAt(matchedIndex);
+            user.ReplaceRecoveryCodes(remainingRecoveryCodes);
+        }
+
+        return true;
     }
 }

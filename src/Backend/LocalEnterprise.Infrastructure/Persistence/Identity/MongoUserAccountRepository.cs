@@ -90,6 +90,7 @@ public sealed class MongoUserAccountRepository : IUserAccountRepository
             LastPasswordChangedAt = user.LastPasswordChangedAt,
             IsLocked = user.IsLocked,
             LockedAt = user.LockedAt,
+            FailedSignInAttempts = user.FailedSignInAttempts,
             TwoFactorSharedSecret = user.TwoFactorSharedSecret,
             TwoFactorEnabled = user.TwoFactorEnabled,
             RecoveryCodeHashes = user.RecoveryCodeHashes.ToArray()
@@ -109,6 +110,7 @@ public sealed class MongoUserAccountRepository : IUserAccountRepository
             doc.LastPasswordChangedAt,
             doc.IsLocked,
             doc.LockedAt,
+            doc.FailedSignInAttempts,
             doc.TwoFactorSharedSecret,
             doc.TwoFactorEnabled,
             doc.RecoveryCodeHashes);
@@ -141,6 +143,8 @@ public sealed class MongoUserAccountRepository : IUserAccountRepository
 
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime? LockedAt { get; set; }
+
+        public int FailedSignInAttempts { get; set; }
 
         public string? TwoFactorSharedSecret { get; set; }
 

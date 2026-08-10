@@ -152,6 +152,24 @@ export class AuthService {
     );
   }
 
+  regenerateRecoveryCodes(code: string): Observable<TwoFactorVerificationResult> {
+    return this.http.post<TwoFactorVerificationResult>(`${apiConfig.authBaseUrl}/api/users/me/2fa/recovery-codes/regenerate`, { code }).pipe(
+      tap((result) => {
+        this.currentUserValue.set(result.user);
+        this.currentUserLoadedValue.set(true);
+      })
+    );
+  }
+
+  disableTwoFactor(code: string): Observable<UserAccount> {
+    return this.http.post<UserAccount>(`${apiConfig.authBaseUrl}/api/users/me/2fa/disable`, { code }).pipe(
+      tap((user) => {
+        this.currentUserValue.set(user);
+        this.currentUserLoadedValue.set(true);
+      })
+    );
+  }
+
   private clearPkceArtifacts(): void {
     sessionStorage.removeItem(this.pkceStateKey);
     sessionStorage.removeItem(this.pkceVerifierKey);
