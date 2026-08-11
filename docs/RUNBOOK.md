@@ -19,6 +19,11 @@ Use MCP template:
 - `config/mcp/mcp.servers.template.json`
 
 Copy values into your agent MCP settings and adjust paths/secrets.
+For VS Code + Cline in this workspace, run:
+
+```powershell
+.\scripts\setup\06_sync_cline_mcp.ps1
+```
 
 Configured now in workspace MCP:
 
@@ -29,6 +34,11 @@ Configured now in workspace MCP:
 - dotnet (`roslyn-codelens-mcp`)
 - microsoft_learn (`mcp-remote https://learn.microsoft.com/api/mcp`)
 - mongodb (`mongodb-mcp-server` in `--readOnly` mode)
+
+Actual runtime files (what is used by tools):
+
+- Workspace MCP: `.vscode/mcp.json`
+- Cline MCP: `%APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
 
 Note: there is currently no official Optimus UI MCP server package published on npm.
 
@@ -84,6 +94,22 @@ Read:
 - `config/routing/routing.policy.yaml`
 
 Local first for routine/private tasks. Escalate to Copilot for complex tasks.
+This file is a policy reference and CI-validated artifact; it does not automatically switch models in VS Code/Cline by itself.
+
+## 3.1) Model role policy and actual model selection
+
+`config/models/models.policy.json` defines desired role mapping (coding/reasoning/embeddings) for your local stack.
+
+Important: this policy file is not directly consumed by Cline/Copilot model picker.
+
+- Cline/Ollama model selection is configured in Cline settings/UI.
+- Copilot model selection is configured in Copilot chat/model controls.
+
+Use this command to verify policy-vs-installed local model readiness:
+
+```powershell
+.\scripts\setup\05_confidence_check.ps1
+```
 
 ## 4) Security baseline
 

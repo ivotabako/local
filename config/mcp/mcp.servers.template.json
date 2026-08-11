@@ -22,7 +22,7 @@
         "@modelcontextprotocol/server-github"
       ],
       "env": {
-        "GITHUB_TOKEN": "SET_ME"
+        "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
       }
     },
     "browser": {
@@ -32,11 +32,12 @@
         "@playwright/mcp"
       ]
     },
-    "angular": {
+    "angular-cli": {
       "command": "npx",
       "args": [
         "-y",
-        "@siemens/ix-mcp-angular"
+        "@angular/cli",
+        "mcp"
       ]
     },
     "dotnet": {
@@ -63,7 +64,7 @@
         "--readOnly"
       ],
       "env": {
-        "MDB_MCP_CONNECTION_STRING": "SET_ME"
+        "MDB_MCP_CONNECTION_STRING": "${env:MDB_MCP_CONNECTION_STRING}"
       }
     },
     "docker": {
@@ -80,7 +81,7 @@
         "@modelcontextprotocol/server-postgres"
       ],
       "env": {
-        "POSTGRES_CONNECTION_STRING": "SET_ME"
+        "POSTGRES_CONNECTION_STRING": "${env:POSTGRES_CONNECTION_STRING}"
       }
     }
   }

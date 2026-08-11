@@ -25,6 +25,12 @@ Set-ExecutionPolicy -Scope Process Bypass
 code .\docs\RUNBOOK.md
 ```
 
+4. Sync workspace MCP config into Cline MCP settings:
+
+```powershell
+.\scripts\setup\06_sync_cline_mcp.ps1
+```
+
 ## Current machine profile detected
 
 - CPU: Intel i7-12700KF

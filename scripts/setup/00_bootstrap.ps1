@@ -16,11 +16,13 @@ Write-Host "[2/4] Installing recommended VS Code extension(s)..."
 Write-Host "[3/4] Pulling local models..."
 & "$PSScriptRoot\03_pull_models.ps1" -Models @($CodingModel, $ReasoningModel, $EmbeddingModel)
 
-Write-Host "[4/5] Verifying MCP server command paths via npx metadata check..."
+Write-Host "[4/6] Verifying MCP server command paths via npx metadata check..."
 & "$PSScriptRoot\04_validate_mcp_commands.ps1"
 
-Write-Host "[5/5] Running confidence checks..."
+Write-Host "[5/6] Running confidence checks..."
 & "$PSScriptRoot\05_confidence_check.ps1"
 
+Write-Host "[6/6] Syncing workspace MCP to Cline MCP settings..."
+& "$PSScriptRoot\06_sync_cline_mcp.ps1"
+
 Write-Host "Bootstrap completed successfully."
-Write-Host "Next: configure your agent MCP settings with config/mcp/mcp.servers.template.json"
