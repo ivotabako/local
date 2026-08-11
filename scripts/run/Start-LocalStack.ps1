@@ -35,6 +35,53 @@ function Start-ProcessInNewWindow {
     Start-Process -FilePath $FilePath -WorkingDirectory $WorkingDirectory -ArgumentList $ArgumentList -PassThru | Out-Null
 }
 
+function Wait-ForHttpsEndpoint {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Uri,
+        [int]$TimeoutSeconds = 180,
+        [int]$PollIntervalSeconds = 2
+    )
+
+    $originalCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+
+    try {
+        $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+
+        while ((Get-Date) -lt $deadline) {
+            try {
+                $request = [System.Net.HttpWebRequest]::Create($Uri)
+                $request.Timeout = 5000
+                $request.Method = 'GET'
+
+                $response = $request.GetResponse()
+                if ($null -ne $response) {
+                    $response.Close()
+                    return $true
+                }
+            }
+            catch [System.Net.WebException] {
+                $response = $_.Exception.Response
+                if ($null -ne $response) {
+                    $response.Close()
+                    return $true
+                }
+            }
+            catch {
+                # Ignore transient startup failures and retry.
+            }
+
+            Start-Sleep -Seconds $PollIntervalSeconds
+        }
+    }
+    finally {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $originalCallback
+    }
+
+    return $false
+}
+
 if (-not $SkipCertificateSetup) {
     Write-Host 'Ensuring development certificates exist...' -ForegroundColor Cyan
     & (Join-Path $PSScriptRoot 'Create-DevCertificates.ps1')
@@ -45,11 +92,23 @@ $dotnetPath = Resolve-CommandPath -CommandName 'dotnet'
 if (-not $SkipAuth) {
     Write-Host 'Starting authorization server...' -ForegroundColor Cyan
     Start-ProcessInNewWindow -FilePath $dotnetPath -WorkingDirectory (Join-Path $workspaceRoot 'src/Backend/LocalEnterprise.Auth') -ArgumentList @('run', '--launch-profile', 'https', '--project', 'LocalEnterprise.Auth.csproj') -EnvironmentName 'Development'
+
+    Write-Host 'Waiting for authorization server to become available...' -ForegroundColor DarkGray
+    $authReady = Wait-ForHttpsEndpoint -Uri 'https://localhost:7081' -TimeoutSeconds 180
+    if (-not $authReady) {
+        throw 'Authorization server did not become ready in time.'
+    }
 }
 
 if (-not $SkipBackend) {
     Write-Host 'Starting backend API...' -ForegroundColor Cyan
     Start-ProcessInNewWindow -FilePath $dotnetPath -WorkingDirectory (Join-Path $workspaceRoot 'src/Backend/LocalEnterprise.Api') -ArgumentList @('run', '--launch-profile', 'https', '--project', 'LocalEnterprise.Api.csproj') -EnvironmentName 'Development'
+
+    Write-Host 'Waiting for backend API to become available...' -ForegroundColor DarkGray
+    $backendReady = Wait-ForHttpsEndpoint -Uri 'https://localhost:7243' -TimeoutSeconds 180
+    if (-not $backendReady) {
+        throw 'Backend API did not become ready in time.'
+    }
 }
 
 if (-not $SkipFrontend) {
